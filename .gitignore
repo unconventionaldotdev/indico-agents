@@ -1,0 +1,32 @@
+.DS_Store
+
+# Local editor and IDE metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local agent and tool runtime state
+.omx/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node caches and dependencies
+node_modules/
+.npm/
+.pnpm-store/
+
+# Rust build output
+target/
+
+# Logs and local environment files
+*.log
+.env
+.env.*
+!.env.example
+!.env.sample
