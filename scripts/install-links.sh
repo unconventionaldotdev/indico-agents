@@ -1,24 +1,34 @@
 #!/usr/bin/env bash
-# Materializes symlinks from a host repository into this submodule based on
-# the host repository's .agents-links manifest.
+# Installs shared agent links from this submodule into the host repository.
 #
-# Run from the host repository root, or from inside the submodule:
-#   bash agents/indico/scripts/install-links.sh
+# Usage:
+#   bash agents/indico/scripts/install-links.sh [<skills-target-dir>]
 #
-# Manifest format (.agents-links at the host repository root):
-#   <src-under-submodule-root>  <dst-under-host-repo-root>  [mode]
+# Without arguments, the script installs the universal markdown files at
+# host-native paths:
 #
-# `mode` is optional:
-#   file      (default) symlink `src` directly to `dst`.
-#   contents  treat `src` as a directory and create one symlink per immediate
-#             child of `src` inside `dst`. Use this to install collections of
-#             files (e.g. skills) without listing each one in the manifest.
+#   <host>/AGENTS.md             -> agents/indico/AGENTS.md
+#   <host>/CODING_GUIDELINES.md  -> agents/indico/CODING_GUIDELINES.md
+#   <host>/indico/AGENTS.md      -> ../agents/indico/indico/AGENTS.md
+#                                   (only when an `indico/` directory exists
+#                                   at the host repository root)
 #
-# Lines starting with `#` and blank lines are ignored.
+# When a destination lives inside a nested submodule (such as the upstream
+# `indico/` submodule), the script also appends the destination path to that
+# submodule's local `.git/info/exclude` so the host-side symlink does not
+# pollute the submodule's status.
 #
-# When a destination lives inside a nested git submodule, the script also
-# adds the corresponding path to that submodule's local `.git/info/exclude`
-# so the host-side symlink does not pollute the submodule's status.
+# With one argument, the script additionally installs each shared skill under
+# the given directory. The argument is the path (relative to the host
+# repository root) where your AI assistant looks for skills:
+#
+#   bash agents/indico/scripts/install-links.sh .claude/skills   # Claude Code
+#   bash agents/indico/scripts/install-links.sh .codex/skills    # OpenAI Codex
+#   bash agents/indico/scripts/install-links.sh .cursor/skills   # Cursor
+#
+# Skill symlinks are intentionally per-user (different teammates use different
+# assistants). They should not be committed by the host repository. Add the
+# chosen skills directory to the host repository's `.gitignore`.
 
 set -euo pipefail
 
@@ -31,16 +41,7 @@ if [ -z "$HOST_ROOT" ]; then
   exit 1
 fi
 
-MANIFEST="$HOST_ROOT/.agents-links"
-if [ ! -f "$MANIFEST" ]; then
-  echo "error: manifest not found at $MANIFEST" >&2
-  echo "create one with entries like:" >&2
-  echo "  AGENTS.md             AGENTS.md" >&2
-  echo "  CODING_GUIDELINES.md  CODING_GUIDELINES.md" >&2
-  echo "  skills                .claude/skills        contents" >&2
-  echo "  skills                .codex/skills         contents" >&2
-  exit 1
-fi
+SKILLS_TARGET="${1:-}"
 
 relpath() {
   python3 -c "import os, sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$1" "$2"
@@ -77,6 +78,11 @@ link_one() {
   local src_abs="$1"
   local dst_rel="$2"
 
+  if [ ! -e "$src_abs" ]; then
+    echo "error: missing source $src_abs" >&2
+    exit 1
+  fi
+
   local dst_dir
   dst_dir="$(dirname "$dst_rel")"
   mkdir -p "$HOST_ROOT/$dst_dir"
@@ -96,45 +102,25 @@ link_one() {
 
 cd "$HOST_ROOT"
 
-while IFS= read -r raw || [ -n "$raw" ]; do
-  line="${raw%%#*}"
-  trimmed="$(printf '%s' "$line" | awk '{$1=$1};1')"
-  [ -z "$trimmed" ] && continue
+# Universal markdown files
+link_one "$SUBMODULE_ROOT/AGENTS.md" "AGENTS.md"
+link_one "$SUBMODULE_ROOT/CODING_GUIDELINES.md" "CODING_GUIDELINES.md"
 
-  read -r src dst mode <<<"$trimmed"
-  mode="${mode:-file}"
+# Indico-submodule guidance (only when the host mounts upstream Indico)
+if [ -d "$HOST_ROOT/indico" ]; then
+  link_one "$SUBMODULE_ROOT/indico/AGENTS.md" "indico/AGENTS.md"
+else
+  echo "skip indico/AGENTS.md (host repository has no indico/ directory)"
+fi
 
-  if [ -z "${src:-}" ] || [ -z "${dst:-}" ]; then
-    echo "error: malformed line in manifest: $raw" >&2
-    exit 1
-  fi
-
-  src_abs="$SUBMODULE_ROOT/$src"
-  if [ ! -e "$src_abs" ]; then
-    echo "error: missing source $src_abs (referenced by $raw)" >&2
-    exit 1
-  fi
-
-  case "$mode" in
-    file)
-      link_one "$src_abs" "$dst"
-      ;;
-    contents)
-      if [ ! -d "$src_abs" ]; then
-        echo "error: contents mode requires a directory source, got $src_abs" >&2
-        exit 1
-      fi
-      mkdir -p "$HOST_ROOT/$dst"
-      for child in "$src_abs"/*; do
-        [ -e "$child" ] || continue
-        name="$(basename "$child")"
-        link_one "$child" "$dst/$name"
-      done
-      ;;
-    *)
-      echo "error: unknown mode '$mode' in line: $raw" >&2
-      echo "       valid modes are: file, contents" >&2
-      exit 1
-      ;;
-  esac
-done <"$MANIFEST"
+# Skills (only when a target directory is given)
+if [ -n "$SKILLS_TARGET" ]; then
+  mkdir -p "$HOST_ROOT/$SKILLS_TARGET"
+  for skill_dir in "$SUBMODULE_ROOT/skills"/*; do
+    [ -d "$skill_dir" ] || continue
+    name="$(basename "$skill_dir")"
+    link_one "$skill_dir" "$SKILLS_TARGET/$name"
+  done
+else
+  echo "skip skills (pass a target directory to install them, e.g. .claude/skills)"
+fi

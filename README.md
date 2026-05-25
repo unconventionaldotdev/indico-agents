@@ -22,24 +22,30 @@ host repositories to one client, deployment, or private workflow.
 
 ## Using As A Submodule
 
-Add this repository as a submodule inside a host repository:
+Add this repository as a submodule inside a host repository, then run the bootstrap script:
 
 ```sh
 git submodule add https://github.com/unconventionaldotdev/indico-agents agents/indico
 git submodule update --init --recursive
+
+# Universal markdown files
+bash agents/indico/scripts/install-links.sh
+
+# Plus skills for your AI assistant of choice
+bash agents/indico/scripts/install-links.sh .claude/skills
 ```
 
-See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, including the symlink pattern for surfacing shared files at host-native paths.
+See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, including per-contributor skill installation and `.gitignore` recommendations.
 
 ## Documents
 
 - `AGENTS.md`: Generic agent guidance for host repositories. Symlink or reference this from each host repository.
 - `CODING_GUIDELINES.md`: Baseline coding, testing, style, git, and PR conventions for Indico-related work.
 - `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
-- `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill (`SKILL.md` plus optional helpers). Skills are plain markdown with YAML frontmatter and work with any AI assistant that follows that convention. Install into a host repository at the assistant's skills directory (e.g. `.claude/skills/` for Claude Code, `.codex/skills/` for Codex) using the manifest's `contents` mode.
+- `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill (`SKILL.md` plus optional helpers). Skills are plain markdown with YAML frontmatter and work with any AI assistant that follows that convention.
 - `MAINTAINERS.md`: Instructions for editing this repository.
 - `HOST_INTEGRATION.md`: How to add this repository as a submodule and surface files at host-native paths.
-- `scripts/install-links.sh`: Bootstrap script that materializes symlinks from a host repository's `.agents-links` manifest.
+- `scripts/install-links.sh`: Bootstrap script that creates relative symlinks from a host repository into this submodule.
 
 ## Maintenance Principles
 

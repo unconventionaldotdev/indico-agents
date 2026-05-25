@@ -10,6 +10,7 @@ These instructions apply to Indico-based applications and the host repositories 
 
 - `CODING_GUIDELINES.md`: Shared coding, testing, style, git, and PR conventions.
 - `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
+- `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill.
 
 ## Before Changing Code
 
@@ -48,16 +49,19 @@ Every changed line should trace back to the requested behavior. Avoid drive-by r
 
 ## Onboarding A Host Repository
 
-If a host repository references this file from a submodule path (e.g. `agents/indico/AGENTS.md`), the submodule must be initialized first:
+Initialize the submodule and install shared links once after cloning:
 
 ```sh
 git submodule update --init --recursive
-```
 
-If the host repository uses the symlink pattern (i.e. files at host-native paths point into the submodule), the symlinks resolve automatically once the submodule is initialized. When a `.agents-links` manifest exists at the host repository root but the expected symlinks are missing or broken, run:
-
-```sh
+# Universal markdown files (AGENTS.md, CODING_GUIDELINES.md, indico/AGENTS.md)
 bash agents/indico/scripts/install-links.sh
+
+# Also install shared skills into your AI assistant's skills directory
+bash agents/indico/scripts/install-links.sh .claude/skills    # Claude Code
+bash agents/indico/scripts/install-links.sh .codex/skills     # OpenAI Codex
 ```
 
-See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, including manifest format and caveats.
+The universal symlinks are the same for every contributor and should be committed by the host repository. Skill symlinks are per-contributor (each teammate may use a different assistant) and should be ignored by the host repository's `.gitignore`.
+
+See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model.
