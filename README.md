@@ -36,6 +36,7 @@ See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, i
 - `AGENTS.md`: Generic agent guidance for host repositories. Symlink or reference this from each host repository.
 - `CODING_GUIDELINES.md`: Baseline coding, testing, style, git, and PR conventions for Indico-related work.
 - `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
+- `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill (`SKILL.md` plus optional helpers). Skills are plain markdown with YAML frontmatter and work with any AI assistant that follows that convention. Install into a host repository at the assistant's skills directory (e.g. `.claude/skills/` for Claude Code, `.codex/skills/` for Codex) using the manifest's `contents` mode.
 - `MAINTAINERS.md`: Instructions for editing this repository.
 - `HOST_INTEGRATION.md`: How to add this repository as a submodule and surface files at host-native paths.
 - `scripts/install-links.sh`: Bootstrap script that materializes symlinks from a host repository's `.agents-links` manifest.

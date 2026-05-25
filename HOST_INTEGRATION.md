@@ -23,12 +23,20 @@ Each host repository declares its desired symlinks in a `.agents-links` manifest
 
 ```
 # .agents-links
-# <src under agents/indico/>   <dst under host repo root>
+# <src under agents/indico/>   <dst under host repo root>   [mode]
 AGENTS.md                       AGENTS.md
 CODING_GUIDELINES.md            CODING_GUIDELINES.md
+indico/AGENTS.md                indico/AGENTS.md
+skills                          .claude/skills              contents
+skills                          .codex/skills               contents
 ```
 
 Lines starting with `#` and blank lines are ignored.
+
+The optional third column selects the link mode:
+
+- `file` (default): symlink the source path directly to the destination.
+- `contents`: treat the source as a directory and create one symlink per immediate child inside the destination. Useful for installing the full skills catalog with a single manifest line, and for exposing the same catalog to multiple AI assistants (each one reads skills from its own path).
 
 ### Materialize The Symlinks
 
@@ -54,6 +62,7 @@ Only files that read as generic guidance for host repositories:
 - `AGENTS.md`
 - `CODING_GUIDELINES.md`
 - `indico/AGENTS.md`: surface inside a host repository's Indico submodule (e.g. at `indico/AGENTS.md`) so agents working in the Indico working tree pick it up.
+- `skills` (contents mode): install the shared skill catalog under the assistant's skills directory. The destination depends on which assistants the host repository uses: `.claude/skills` for Claude Code, `.codex/skills` for OpenAI Codex, or both with two manifest lines. Each `SKILL.md` is a plain markdown file with YAML frontmatter and works with any assistant that follows the same convention.
 
 Do not symlink `MAINTAINERS.md`, `HOST_INTEGRATION.md`, or `README.md`. They are repository-specific to `indico-agents` and should stay inside `agents/indico/`.
 

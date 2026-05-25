@@ -6,7 +6,14 @@
 #   bash agents/indico/scripts/install-links.sh
 #
 # Manifest format (.agents-links at the host repository root):
-#   <src-relative-to-submodule-root>  <dst-relative-to-host-repo-root>
+#   <src-under-submodule-root>  <dst-under-host-repo-root>  [mode]
+#
+# `mode` is optional:
+#   file      (default) symlink `src` directly to `dst`.
+#   contents  treat `src` as a directory and create one symlink per immediate
+#             child of `src` inside `dst`. Use this to install collections of
+#             files (e.g. skills) without listing each one in the manifest.
+#
 # Lines starting with `#` and blank lines are ignored.
 #
 # When a destination lives inside a nested git submodule, the script also
@@ -30,6 +37,8 @@ if [ ! -f "$MANIFEST" ]; then
   echo "create one with entries like:" >&2
   echo "  AGENTS.md             AGENTS.md" >&2
   echo "  CODING_GUIDELINES.md  CODING_GUIDELINES.md" >&2
+  echo "  skills                .claude/skills        contents" >&2
+  echo "  skills                .codex/skills         contents" >&2
   exit 1
 fi
 
@@ -64,6 +73,27 @@ exclude_in_nested_submodule() {
   fi
 }
 
+link_one() {
+  local src_abs="$1"
+  local dst_rel="$2"
+
+  local dst_dir
+  dst_dir="$(dirname "$dst_rel")"
+  mkdir -p "$HOST_ROOT/$dst_dir"
+
+  local target_rel
+  target_rel="$(relpath "$src_abs" "$HOST_ROOT/$dst_dir")"
+
+  local dst_abs="$HOST_ROOT/$dst_rel"
+  if [ -L "$dst_abs" ] || [ -e "$dst_abs" ]; then
+    rm -f "$dst_abs"
+  fi
+  ln -s "$target_rel" "$dst_abs"
+  echo "linked $dst_rel -> $target_rel"
+
+  exclude_in_nested_submodule "$dst_abs"
+}
+
 cd "$HOST_ROOT"
 
 while IFS= read -r raw || [ -n "$raw" ]; do
@@ -71,7 +101,9 @@ while IFS= read -r raw || [ -n "$raw" ]; do
   trimmed="$(printf '%s' "$line" | awk '{$1=$1};1')"
   [ -z "$trimmed" ] && continue
 
-  read -r src dst <<<"$trimmed"
+  read -r src dst mode <<<"$trimmed"
+  mode="${mode:-file}"
+
   if [ -z "${src:-}" ] || [ -z "${dst:-}" ]; then
     echo "error: malformed line in manifest: $raw" >&2
     exit 1
@@ -83,17 +115,26 @@ while IFS= read -r raw || [ -n "$raw" ]; do
     exit 1
   fi
 
-  dst_dir="$(dirname "$dst")"
-  mkdir -p "$dst_dir"
-
-  target_rel="$(relpath "$src_abs" "$HOST_ROOT/$dst_dir")"
-  dst_abs="$HOST_ROOT/$dst"
-
-  if [ -L "$dst_abs" ] || [ -e "$dst_abs" ]; then
-    rm -f "$dst_abs"
-  fi
-  ln -s "$target_rel" "$dst_abs"
-  echo "linked $dst -> $target_rel"
-
-  exclude_in_nested_submodule "$dst_abs"
+  case "$mode" in
+    file)
+      link_one "$src_abs" "$dst"
+      ;;
+    contents)
+      if [ ! -d "$src_abs" ]; then
+        echo "error: contents mode requires a directory source, got $src_abs" >&2
+        exit 1
+      fi
+      mkdir -p "$HOST_ROOT/$dst"
+      for child in "$src_abs"/*; do
+        [ -e "$child" ] || continue
+        name="$(basename "$child")"
+        link_one "$child" "$dst/$name"
+      done
+      ;;
+    *)
+      echo "error: unknown mode '$mode' in line: $raw" >&2
+      echo "       valid modes are: file, contents" >&2
+      exit 1
+      ;;
+  esac
 done <"$MANIFEST"
