@@ -13,9 +13,65 @@ git submodule update --init --recursive
 
 Commit the submodule entry and `.gitmodules` in the host repository.
 
-## Reference From Host AGENTS.md
+## Surface Shared Files At Host-Native Paths
 
-Add a short section to the host repository's `AGENTS.md`.
+Host repositories often want shared files to appear at host-native paths (e.g. root `AGENTS.md` or `docs/coding-guidelines.md`) so that contributors and tooling find them where expected. Use relative symlinks that point into the submodule.
+
+### Manifest
+
+Each host repository declares its desired symlinks in a `.agents-links` manifest at the host repository root.
+
+```
+# .agents-links
+# <src under agents/indico/>   <dst under host repo root>
+AGENTS.md                       AGENTS.md
+CODING_GUIDELINES.md            CODING_GUIDELINES.md
+```
+
+Lines starting with `#` and blank lines are ignored.
+
+### Materialize The Symlinks
+
+Run the bootstrap script shipped with this submodule from the host repository root:
+
+```sh
+bash agents/indico/scripts/install-links.sh
+```
+
+The script reads the manifest, creates each symlink with a path relative to its destination, and is idempotent. Commit the resulting symlinks together with the manifest:
+
+```sh
+git add .agents-links AGENTS.md CODING_GUIDELINES.md
+git commit -m "chore: add shared indico agent guidance symlinks"
+```
+
+Symlinks are stored as blobs in git and resolve on every clone once `git submodule update --init` has been run. Contributors do not need to re-run the script unless the manifest changes.
+
+### What To Symlink
+
+Only files that read as generic guidance for host repositories:
+
+- `AGENTS.md`
+- `CODING_GUIDELINES.md`
+- `indico/AGENTS.md`: surface inside a host repository's Indico submodule (e.g. at `indico/AGENTS.md`) so agents working in the Indico working tree pick it up.
+
+Do not symlink `MAINTAINERS.md`, `HOST_INTEGRATION.md`, or `README.md`. They are repository-specific to `indico-agents` and should stay inside `agents/indico/`.
+
+### Symlinks Inside Nested Submodules
+
+When a destination in `.agents-links` lives inside another submodule (for example, the upstream Indico submodule at `indico/`), the bootstrap script adds the destination path to that nested submodule's local `.git/info/exclude`. This keeps the host-side symlink invisible to the nested submodule's `git status` without committing anything upstream.
+
+The exclude entry is local to each clone, not tracked by either repository. Contributors run `bash agents/indico/scripts/install-links.sh` once after cloning to recreate it.
+
+### Caveats
+
+- Git symlinks require `core.symlinks=true` and developer mode on Windows. Host repositories with Windows contributors should fall back to the path-reference approach below.
+- Renaming a file in this repository breaks downstream symlinks. Coordinate renames with host repositories or add a redirect note.
+- The submodule must be initialized before symlinks resolve. Document `git submodule update --init --recursive` in host repository setup instructions.
+
+## Reference Without Symlinks
+
+Host repositories that cannot use symlinks (Windows-only contributors, policy constraints) can reference shared files by path instead. Add a short section to the host repository's `AGENTS.md`:
 
 ```md
 ## Shared Indico Agent Guidance
@@ -37,8 +93,8 @@ Adjust the path if the submodule is mounted somewhere else.
 Use this order when instructions conflict:
 
 1. System, developer, and direct user instructions.
-2. Host repository `AGENTS.md` files, with deeper files winning over parent files.
-3. Shared guidance from this submodule.
+2. Host-owned instructions (deeper `AGENTS.md` files, `CLAUDE.md`, files under `.claude/`).
+3. Shared guidance from this submodule (the host repository's root `AGENTS.md` may itself be a symlink to it).
 
 The shared guidance should define reusable defaults only. Host repositories should define local behavior and client-specific constraints.
 

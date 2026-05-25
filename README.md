@@ -22,24 +22,23 @@ host repositories to one client, deployment, or private workflow.
 
 ## Using As A Submodule
 
-Add this repository as a submodule inside a host repository, then reference the shared documents from that host
-repository's `AGENTS.md`.
+Add this repository as a submodule inside a host repository:
 
 ```sh
 git submodule add https://github.com/unconventionaldotdev/indico-agents agents/indico
+git submodule update --init --recursive
 ```
 
-Recommended host guidance:
-
-```md
-Read `agents/indico/AGENTS.md` and `agents/indico/CODING_GUIDELINES.md` before editing code. Host repository
-instructions override shared guidance when they are more specific.
-```
+See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, including the symlink pattern for surfacing shared files at host-native paths.
 
 ## Documents
 
-- `AGENTS.md`: Shared instructions for agents working in this repository or consuming it as a submodule.
+- `AGENTS.md`: Generic agent guidance for host repositories. Symlink or reference this from each host repository.
 - `CODING_GUIDELINES.md`: Baseline coding, testing, style, git, and PR conventions for Indico-related work.
+- `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
+- `MAINTAINERS.md`: Instructions for editing this repository.
+- `HOST_INTEGRATION.md`: How to add this repository as a submodule and surface files at host-native paths.
+- `scripts/install-links.sh`: Bootstrap script that materializes symlinks from a host repository's `.agents-links` manifest.
 
 ## Maintenance Principles
 
