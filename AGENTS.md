@@ -16,8 +16,19 @@ These instructions apply to Indico-based applications and the host repositories 
 
 1. Read `CODING_GUIDELINES.md` for the shared baseline.
 2. Read host repository instructions (deeper `AGENTS.md` files, `CLAUDE.md`, or files under `.claude/`) for repository-specific rules.
-3. Inspect nearby code before adding new files.
-4. Keep changes surgical and scoped to the requested task.
+3. Check the Available Skills below; prefer a matching skill over a manual approach.
+4. Inspect nearby code before adding new files.
+5. Keep changes surgical and scoped to the requested task.
+
+## Available Skills
+
+This repository ships skills under `skills/` (installed at `.agents/skills/`). Prefer them over ad-hoc implementations of the same task. Full triggers and steps live in each `SKILL.md`.
+
+- `add-alembic-migration`: write an Alembic migration for an Indico model change
+- `add-indico-rh`: add a request handler (endpoint) to an Indico module
+- `bump-indico-submodule`: move the host's Indico submodule pointer forward
+- `locate-in-indico`: find where code lives in the `indico/` tree before editing
+- `write-indico-test`: write a pytest test for Indico code (test-first)
 
 ## Coding And Testing
 

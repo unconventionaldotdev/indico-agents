@@ -16,6 +16,12 @@ Instructions for editing this repository (`indico-agents`). For agent guidance c
 - Do not add client-private details, credentials, environment values, deployment URLs, or one-off project workflows.
 - If a rule only applies to one host repository, add it to that host repository instead.
 
+## Skills
+
+- Each subdirectory under `skills/` is one skill (`SKILL.md` plus optional helpers).
+- When adding, removing, or renaming a skill, update the Available Skills index in [AGENTS.md](AGENTS.md) so it stays in sync.
+- Keep per-skill trigger detail in its `SKILL.md`; the `AGENTS.md` index is a one-line pointer only.
+
 ## Before Changing Files
 
 1. Read [README.md](README.md) and [CODING_GUIDELINES.md](CODING_GUIDELINES.md).
