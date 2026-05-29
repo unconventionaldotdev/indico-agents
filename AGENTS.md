@@ -57,9 +57,11 @@ git submodule update --init --recursive
 # Universal markdown files (AGENTS.md, CODING_GUIDELINES.md, indico/AGENTS.md)
 bash agents/indico/scripts/install-links.sh
 
-# Also install shared skills into your AI assistant's skills directory
-bash agents/indico/scripts/install-links.sh .claude/skills    # Claude Code
-bash agents/indico/scripts/install-links.sh .codex/skills     # OpenAI Codex
+# Also install shared skills into .agents/skills (read natively by Codex, Cursor, etc.)
+bash agents/indico/scripts/install-links.sh --skills
+
+# Claude users add the bridge (.claude -> .agents and CLAUDE.md redirects)
+bash agents/indico/scripts/install-links.sh --skills --claude
 ```
 
 The universal symlinks are the same for every contributor and should be committed by the host repository. Skill symlinks are per-contributor (each teammate may use a different assistant) and should be ignored by the host repository's `.gitignore`.

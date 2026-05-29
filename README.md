@@ -31,8 +31,11 @@ git submodule update --init --recursive
 # Universal markdown files
 bash agents/indico/scripts/install-links.sh
 
-# Plus skills for your AI assistant of choice
-bash agents/indico/scripts/install-links.sh .claude/skills
+# Plus shared skills (land in .agents/skills, read natively by Codex, Cursor, etc.)
+bash agents/indico/scripts/install-links.sh --skills
+
+# Claude users also install the bridge (.claude -> .agents and CLAUDE.md redirects)
+bash agents/indico/scripts/install-links.sh --skills --claude
 ```
 
 See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, including per-contributor skill installation and `.gitignore` recommendations.

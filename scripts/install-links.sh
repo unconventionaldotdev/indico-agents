@@ -2,9 +2,9 @@
 # Installs shared agent links from this submodule into the host repository.
 #
 # Usage:
-#   bash agents/indico/scripts/install-links.sh [<skills-target-dir>]
+#   bash agents/indico/scripts/install-links.sh [--skills] [--claude]
 #
-# Without arguments, the script installs the universal markdown files at
+# Without flags, the script installs the universal markdown files at
 # host-native paths:
 #
 #   <host>/AGENTS.md             -> agents/indico/AGENTS.md
@@ -18,17 +18,31 @@
 # submodule's local `.git/info/exclude` so the host-side symlink does not
 # pollute the submodule's status.
 #
-# With one argument, the script additionally installs each shared skill under
-# the given directory. The argument is the path (relative to the host
-# repository root) where your AI assistant looks for skills:
+# --skills installs each shared skill under `.agents/skills/`, the cross-agent
+# convention read natively by Codex, Cursor, and other assistants:
 #
-#   bash agents/indico/scripts/install-links.sh .claude/skills   # Claude Code
-#   bash agents/indico/scripts/install-links.sh .codex/skills    # OpenAI Codex
-#   bash agents/indico/scripts/install-links.sh .cursor/skills   # Cursor
+#   <host>/.agents/skills/<name> -> agents/indico/skills/<name>
 #
-# Skill symlinks are intentionally per-user (different teammates use different
-# assistants). They should not be committed by the host repository. Add the
-# chosen skills directory to the host repository's `.gitignore`.
+# --claude adds the Claude Code bridge. Claude reads `.claude/` and `CLAUDE.md`,
+# not `.agents/` or `AGENTS.md`, so the bridge points the former at the latter:
+#
+#   <host>/.claude               -> .agents     (so Claude finds the skills)
+#   <host>/CLAUDE.md             redirect to AGENTS.md via `@AGENTS.md`
+#   <host>/indico/CLAUDE.md      redirect to indico/AGENTS.md (when indico/ exists)
+#
+# The `indico/CLAUDE.md` redirect lives inside the upstream Indico submodule, so
+# the script adds it (alongside the `indico/AGENTS.md` symlink) to that
+# submodule's local `.git/info/exclude`.
+#
+# Skill links and the `.claude` symlink are per-contributor (teammates use
+# different assistants) and should not be committed by the host repository. Add
+# these to the host repository's `.gitignore`:
+#
+#   /.agents/skills/
+#   /.claude
+#
+# The generated `CLAUDE.md` is a stable redirect, identical for every clone, and
+# is committed alongside the root `AGENTS.md`.
 
 set -euo pipefail
 
@@ -41,7 +55,18 @@ if [ -z "$HOST_ROOT" ]; then
   exit 1
 fi
 
-SKILLS_TARGET="${1:-}"
+INSTALL_SKILLS=false
+INSTALL_CLAUDE=false
+for arg in "$@"; do
+  case "$arg" in
+    --skills) INSTALL_SKILLS=true ;;
+    --claude) INSTALL_CLAUDE=true ;;
+    *)
+      echo "error: unknown argument: $arg (expected --skills and/or --claude)" >&2
+      exit 1
+      ;;
+  esac
+done
 
 relpath() {
   python3 -c "import os, sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$1" "$2"
@@ -100,9 +125,37 @@ link_one() {
   exclude_in_nested_submodule "$dst_abs"
 }
 
+# Symlink a host path to a sibling that lives directly under the host root
+# (no relpath computation, no nested-submodule handling needed).
+symlink_sibling() {
+  local dst_rel="$1"
+  local target="$2"
+
+  local dst_abs="$HOST_ROOT/$dst_rel"
+  if [ -L "$dst_abs" ] || [ -e "$dst_abs" ]; then
+    rm -f "$dst_abs"
+  fi
+  ln -s "$target" "$dst_abs"
+  echo "linked $dst_rel -> $target"
+}
+
+# Write a CLAUDE.md that redirects to its sibling AGENTS.md. Claude resolves the
+# `@AGENTS.md` import relative to the file, so the same body works at any depth.
+write_claude_redirect() {
+  local dst_rel="$1"
+
+  local dst_abs="$HOST_ROOT/$dst_rel"
+  mkdir -p "$(dirname "$dst_abs")"
+  cat >"$dst_abs" <<'EOF'
+# Claude Code entrypoint. Redirects to the shared cross-agent guidance.
+@AGENTS.md
+EOF
+  echo "wrote $dst_rel (redirect -> AGENTS.md)"
+}
+
 cd "$HOST_ROOT"
 
-# Universal markdown files
+# Universal markdown files (committed)
 link_one "$SUBMODULE_ROOT/AGENTS.md" "AGENTS.md"
 link_one "$SUBMODULE_ROOT/CODING_GUIDELINES.md" "CODING_GUIDELINES.md"
 
@@ -113,14 +166,29 @@ else
   echo "skip indico/AGENTS.md (host repository has no indico/ directory)"
 fi
 
-# Skills (only when a target directory is given)
-if [ -n "$SKILLS_TARGET" ]; then
-  mkdir -p "$HOST_ROOT/$SKILLS_TARGET"
+# Shared skills -> .agents/skills (cross-agent convention; per-contributor)
+if [ "$INSTALL_SKILLS" = true ]; then
+  mkdir -p "$HOST_ROOT/.agents/skills"
   for skill_dir in "$SUBMODULE_ROOT/skills"/*; do
     [ -d "$skill_dir" ] || continue
     name="$(basename "$skill_dir")"
-    link_one "$skill_dir" "$SKILLS_TARGET/$name"
+    link_one "$skill_dir" ".agents/skills/$name"
   done
 else
-  echo "skip skills (pass a target directory to install them, e.g. .claude/skills)"
+  echo "skip skills (pass --skills to install them into .agents/skills)"
+fi
+
+# Claude Code bridge: .claude -> .agents plus CLAUDE.md redirects (per-contributor)
+if [ "$INSTALL_CLAUDE" = true ]; then
+  mkdir -p "$HOST_ROOT/.agents"
+  symlink_sibling ".claude" ".agents"
+  write_claude_redirect "CLAUDE.md"
+  if [ -d "$HOST_ROOT/indico" ]; then
+    write_claude_redirect "indico/CLAUDE.md"
+    exclude_in_nested_submodule "$HOST_ROOT/indico/CLAUDE.md"
+  else
+    echo "skip indico/CLAUDE.md (host repository has no indico/ directory)"
+  fi
+else
+  echo "skip Claude bridge (pass --claude to install it)"
 fi

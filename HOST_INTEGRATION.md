@@ -18,7 +18,7 @@ Commit the submodule entry and `.gitmodules` in the host repository.
 This repository ships a single bootstrap script that creates relative symlinks from the host repository into the submodule:
 
 ```sh
-bash agents/indico/scripts/install-links.sh [<skills-target-dir>]
+bash agents/indico/scripts/install-links.sh [--skills] [--claude]
 ```
 
 The script's behavior is hardcoded, not driven by a manifest. It is idempotent: re-running it refreshes existing links.
@@ -41,36 +41,48 @@ Resulting symlinks:
 
 Commit `AGENTS.md` and `CODING_GUIDELINES.md` after the first run. The `indico/AGENTS.md` symlink lives inside the upstream Indico submodule and cannot be tracked by the host repository; the script appends it to the upstream submodule's local `.git/info/exclude` so it does not pollute that submodule's status. Each contributor must run the script once after cloning to recreate that local symlink.
 
-### Skill Links (Per-Contributor, Per-Assistant)
+### Skills (Shared, Cross-Agent)
 
-Different contributors may use different AI assistants. The shared skill catalog under `agents/indico/skills/` is therefore installed per-contributor, into the path that the contributor's assistant looks at.
-
-Pass the assistant-specific skills directory as the first argument:
+The shared skill catalog under `agents/indico/skills/` installs into `.agents/skills/`, the cross-agent convention that Codex, Cursor, and other assistants read natively:
 
 ```sh
-bash agents/indico/scripts/install-links.sh .claude/skills    # Claude Code
-bash agents/indico/scripts/install-links.sh .codex/skills     # OpenAI Codex
-bash agents/indico/scripts/install-links.sh .cursor/skills    # Cursor
+bash agents/indico/scripts/install-links.sh --skills
 ```
 
-Each shared skill becomes a directory symlink under the chosen path. For example, with `.claude/skills`:
+Each shared skill becomes a directory symlink:
 
 ```
-.claude/skills/locate-in-indico       -> ../../agents/indico/skills/locate-in-indico
-.claude/skills/write-indico-test      -> ../../agents/indico/skills/write-indico-test
+.agents/skills/locate-in-indico   -> ../../agents/indico/skills/locate-in-indico
+.agents/skills/write-indico-test  -> ../../agents/indico/skills/write-indico-test
 ...
 ```
 
-Add the chosen skills directories to the host repository's `.gitignore` so each contributor's choice stays local:
+### Claude Code Bridge
+
+Claude Code does not read `.agents/` or `AGENTS.md`. It reads `.claude/` and `CLAUDE.md`. Add `--claude` to bridge both:
+
+```sh
+bash agents/indico/scripts/install-links.sh --skills --claude
+```
+
+This:
+
+- Symlinks `.claude -> .agents`, so Claude finds the shared skills at `.claude/skills/`.
+- Writes `CLAUDE.md` (and `indico/CLAUDE.md` when an `indico/` directory exists), each redirecting to its sibling `AGENTS.md` with a single `@AGENTS.md` import.
+
+The `indico/CLAUDE.md` redirect lives inside the upstream Indico submodule, so the script adds it (alongside the `indico/AGENTS.md` symlink) to that submodule's local `.git/info/exclude`. Both stay invisible to the submodule's `git status` without committing anything upstream.
+
+### Commit Or Ignore
+
+The generated `CLAUDE.md` is a stable redirect, identical for every clone, and is committed alongside the root `AGENTS.md`. The per-contributor symlinks are not committed (teammates use different assistants). Add them to the host repository's `.gitignore`:
 
 ```
 # .gitignore (host repository)
-/.claude/skills/
-/.codex/skills/
-/.cursor/skills/
+/.agents/skills/
+/.claude
 ```
 
-Contributors run the script once after cloning. Adding a new skill upstream (in this repository) becomes available to every contributor on the next run, without any host repository change.
+Contributors run the script once after cloning. A new skill added upstream (in this repository) becomes available to every contributor on the next run, without any host repository change.
 
 ### Symlinks Inside Nested Submodules
 
@@ -108,10 +120,10 @@ Adjust the path if the submodule is mounted somewhere else.
 Use this order when instructions conflict:
 
 1. System, developer, and direct user instructions.
-2. Host-owned instructions (deeper `AGENTS.md` files, `CLAUDE.md`, files under `.claude/`).
-3. Shared guidance from this submodule (the host repository's root `AGENTS.md` may itself be a symlink to it).
+2. Host-owned instructions: nested `AGENTS.md` files the host repository authors beside its own code.
+3. Shared guidance from this submodule. The host's root `AGENTS.md` symlinks to it; the generated root `CLAUDE.md` (`@AGENTS.md`) and the `.claude -> .agents` bridge both resolve back to it.
 
-The shared guidance should define reusable defaults only. Host repositories should define local behavior and client-specific constraints.
+Root `AGENTS.md`, root `CLAUDE.md`, and `.claude/` all surface shared guidance, not host overrides. The generated `CLAUDE.md` is rewritten on each run, so host-owned behavior and client-specific constraints belong in nested `AGENTS.md` files, not appended to it.
 
 ## Updating The Submodule
 
