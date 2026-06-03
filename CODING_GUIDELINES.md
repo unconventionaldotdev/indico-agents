@@ -68,7 +68,6 @@ encode the expected flags and environment.
 When the host repository does not define commands, use the standard toolchain for the detected project:
 
 - Python: `uv run pytest`, `uv run ruff check <paths>`.
-- Rust: `cargo +nightly fmt --all`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`.
 - Node: use the package manager and scripts declared in `package.json`.
 
 For fast feedback, scope direct commands to the changed files. Before finalizing, run the host repository's required
