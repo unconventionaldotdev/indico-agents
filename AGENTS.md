@@ -33,6 +33,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 ## Coding And Testing
 
 - Follow `CODING_GUIDELINES.md` for coding, testing, style, git, and PR conventions.
+- Keep comments minimal: Indico favours self-evident code over explanation. Default to none and let clear names carry the meaning. Add one only for genuinely non-obvious rationale (the why, never the what), and keep it to a single short line. A comment that restates the method, signal, or test name is noise. Signal and public-API docstrings that document a contract are the exception and stay.
 - Use test-first development for production code, scripts, and helpers.
 - Prefer existing test patterns in the host repository over inventing new conventions.
 - Do not mock framework internals, ORM sessions, queries, or model classes unless the host repository explicitly instructs otherwise.
@@ -56,7 +57,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 
 ## Review Standard
 
-Every changed line should trace back to the requested behavior. Avoid drive-by reformatting, renames, or refactors unrelated to the task.
+Every changed line should trace back to the requested behavior. Avoid drive-by reformatting, renames, or refactors unrelated to the task. Iterating within a session often leaves formatting-only leftovers (a rewrapped line, a moved blank line) after you add and then remove code; revert them. Read your own diff before committing and drop every line that changed for formatting alone.
 
 ## Onboarding A Host Repository
 
