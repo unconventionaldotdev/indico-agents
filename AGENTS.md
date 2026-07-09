@@ -54,10 +54,16 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 - Do not commit secrets, generated caches, local IDE metadata, or build artifacts.
 - Use single-line commit messages in the form `type: imperative subject`.
 - Never add `Co-Authored-By` trailers.
+- After merging another branch, run the full test suite before pushing. A local change to a shared attribute or helper can break code that only lives on the merged branch: green in git, red at runtime.
 
 ## Review Standard
 
 Every changed line should trace back to the requested behavior. Avoid drive-by reformatting, renames, or refactors unrelated to the task. Iterating within a session often leaves formatting-only leftovers (a rewrapped line, a moved blank line) after you add and then remove code; revert them. Read your own diff before committing and drop every line that changed for formatting alone.
+
+Two correctness checks that repeatedly matter in review:
+
+- **Honour feature gates on every surface.** When a setting or toggle enables a feature, each place that exposes it (a list, a dashboard, a search, a permission check) must test the same gate. One surface that skips the check leaks the feature while it is off.
+- **Keep comments and docstrings truthful.** When behavior changes (a default flips, an attribute or helper is replaced), fix the prose that describes it in the same change. A stale comment is worse than none.
 
 ## Onboarding A Host Repository
 

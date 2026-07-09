@@ -60,6 +60,17 @@ object with `MagicMock` or `monkeypatch`.
 Do not test private helpers in isolation when they only factor a public function. Test the public surface and let helper
 coverage come through behavior.
 
+Write tests that earn their keep:
+
+- **Make each test discriminating.** Build the setup so only the behavior under test can produce the asserted result. If
+  an unrelated filter (a different field, a narrower query) would make the test pass anyway, it proves nothing.
+- **Assert the expected outcome, not the absence of an error.** Pin the concrete result (a status code, a returned set),
+  not a weak negative such as "not a 403".
+- **Test your own code, not the framework.** Do not re-assert Indico or core guarantees (full access implies management,
+  a base permission holds) from a host or plugin test.
+- **One focused test per behavior.** Merge near-identical tests that share setup and exercise the same path rather than
+  keeping parallel copies.
+
 ## Running Checks
 
 Prefer host repository Makefile targets, task runner commands, or documented scripts over direct tool invocation. They
@@ -82,6 +93,8 @@ checks when practical.
 - Match the surrounding file's formatting, naming, and abstraction level.
 - Prefer editing existing modules over creating new ones.
 - Keep changes surgical. Do not reformat, rename, or refactor adjacent code unless required for the task.
+- Wrap user-facing strings for translation: server strings through `_()` (gettext), client strings through `Translate`
+  or `Translate.string`. Never ship a bare literal a user will read.
 
 ## Design Principles
 
