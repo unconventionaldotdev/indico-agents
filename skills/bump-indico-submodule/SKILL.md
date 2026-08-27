@@ -69,6 +69,8 @@ git commit -m "chore: bump indico submodule to <short_sha>"
 
 The commit message should name the target commit or release tag. Host-repository review needs to see what landed without re-running the same diff.
 
+Every commit in the bump (pointer, plugin enablement, config) keeps the single-line `type: subject` format.
+
 ## When To Hold Off
 
 - The upstream diff contains breaking changes the host has not migrated through yet.
