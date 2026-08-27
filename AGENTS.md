@@ -33,7 +33,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 ## Coding And Testing
 
 - Follow `CODING_GUIDELINES.md` for coding, testing, style, git, and PR conventions.
-- Keep comments minimal: Indico favours self-evident code over explanation. Default to none and let clear names carry the meaning. Add one only for genuinely non-obvious rationale (the why, never the what), and keep it to a single short line. A comment that restates the method, signal, or test name is noise. Signal and public-API docstrings that document a contract are the exception and stay.
+- Keep comments minimal: Indico favours self-evident code over explanation. Default to none and let clear names carry the meaning. Add one only for genuinely non-obvious rationale (the why, never the what). Most fit one short line; a why-comment about an external service's quirk or a fragile invariant may take the lines it needs. A comment that restates the method, signal, or test name is noise. Signal and public-API docstrings that document a contract are the exception and stay.
 - Use test-first development for production code, scripts, and helpers.
 - Prefer existing test patterns in the host repository over inventing new conventions.
 - Do not mock framework internals, ORM sessions, queries, or model classes unless the host repository explicitly instructs otherwise.
@@ -46,6 +46,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 - Use relative Markdown links for files in the same directory.
 - Keep documents ASCII unless a quoted source or code example requires otherwise.
 - Do not add comments or prose that merely restates the heading.
+- Recurring environment or tooling pitfalls belong in the host repository's own instructions (a Known Pitfalls section), next to the commands they affect, not in this shared baseline.
 
 ## Git Workflow
 
@@ -60,10 +61,11 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 
 Every changed line should trace back to the requested behavior. Avoid drive-by reformatting, renames, or refactors unrelated to the task. Iterating within a session often leaves formatting-only leftovers (a rewrapped line, a moved blank line) after you add and then remove code; revert them. Read your own diff before committing and drop every line that changed for formatting alone.
 
-Two correctness checks that repeatedly matter in review:
+Correctness checks that repeatedly matter in review:
 
-- **Honour feature gates on every surface.** When a setting or toggle enables a feature, each place that exposes it (a list, a dashboard, a search, a permission check) must test the same gate. One surface that skips the check leaks the feature while it is off.
+- **Honour feature gates on every surface.** When a setting or toggle enables a feature, each place that exposes it (a list, a dashboard, a search, a permission check) must test the same gate. One surface that skips the check leaks the feature while it is off. The same applies to declared requirements: a new scope, permission, or capability lands on every surface that lists or checks it (declaration tuples, docs, tests) in the same change.
 - **Keep comments and docstrings truthful.** When behavior changes (a default flips, an attribute or helper is replaced), fix the prose that describes it in the same change. A stale comment is worse than none.
+- **Remove what the change orphaned.** A removed or replaced call site leaves behind unused functions, imports, routes, templates, fixtures, and config keys. Grep every symbol you removed or stopped calling and delete or rewire the leftovers before finalizing.
 
 ## Onboarding A Host Repository
 

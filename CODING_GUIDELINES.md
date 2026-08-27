@@ -47,8 +47,8 @@ object with `MagicMock` or `monkeypatch`.
 - Place tests according to the host repository's existing layout, usually mirroring the production tree.
 - Group related tests in a `class TestX:` when they cover one behavior or public unit.
 - Use `@pytest.mark.parametrize` for case matrices instead of duplicating test bodies.
-- Follow the host repository's naming convention for test files. Prefer `test_*.py` for new Python tests unless
-  extending an existing `*_test.py` pattern.
+- Follow the host repository's naming convention for test files. Indico core and the plugin repositories use the
+  `*_test.py` suffix; use `test_*.py` only where the host repository already does.
 
 ### What To Test
 
@@ -56,6 +56,8 @@ object with `MagicMock` or `monkeypatch`.
 - Edge cases reachable from real callers, such as empty input, missing optional fields, duplicate records, and
   constraint violations.
 - Failure modes that production code is expected to handle gracefully.
+- For a new endpoint, the access matrix: each relevant role, including managers of unrelated events, asserted against
+  the expected status code.
 
 Do not test private helpers in isolation when they only factor a public function. Test the public surface and let helper
 coverage come through behavior.
@@ -70,6 +72,13 @@ Write tests that earn their keep:
   a base permission holds) from a host or plugin test.
 - **One focused test per behavior.** Merge near-identical tests that share setup and exercise the same path rather than
   keeping parallel copies.
+
+### Client-Side Tests
+
+- Frontend changes ship a jest spec alongside the component, under `client/js/**/__tests__/*.spec.js` or the host
+  repository's equivalent location.
+- Name `it()` blocks as behavior sentences ("renders the join button when the meeting is live"), not implementation
+  notes.
 
 ## Running Checks
 
@@ -89,7 +98,10 @@ checks when practical.
 - Keep imports at the top of the file, grouped by standard library, third-party packages, framework packages, and host
   project packages.
 - Avoid comments that explain what the code plainly does. Reserve comments for non-obvious reasons, invariants,
-  constraints, or workarounds.
+  constraints, or workarounds. A why-comment about an external service's behavior may take several lines when the
+  invariant needs them.
+- Signal and public-API docstrings document the full contract: sender, kwargs, return value, and (for signals) how
+  multiple listener returns combine.
 - Match the surrounding file's formatting, naming, and abstraction level.
 - Prefer editing existing modules over creating new ones.
 - Keep changes surgical. Do not reformat, rename, or refactor adjacent code unless required for the task.
@@ -110,6 +122,10 @@ checks when practical.
 - Stage files explicitly by name. Never use `git add -A`, `git add .`, or `git add -u`.
 - Use single-line commit messages in English: `type: imperative subject`.
 - Keep the subject lowercase after the colon and omit trailing punctuation.
+- Commit style follows the target repository when it differs. The upstream Indico repositories have their own
+  conventions; see `indico/AGENTS.md`.
+- Know the merge strategy before writing fixup commits. In repositories that merge branches unsquashed, every commit
+  subject must stand on its own; in squash-merge repositories, the PR title becomes the final subject.
 - Never add `Co-Authored-By` trailers.
 - Force-push only with explicit approval, and use `--force-with-lease`.
 
@@ -117,6 +133,17 @@ checks when practical.
 
 - Write descriptions at the big-picture level: what changed and why it matters.
 - Avoid file-by-file narration, implementation details, version numbers, and CI status in the description.
+- Default to brief. A new feature does not automatically earn headers and sections; add structure only when the reader
+  needs it.
+- Bug-fix descriptions state the root cause, not only the symptom. When behavior changes, a short Before/After pair
+  makes the change reviewable at a glance.
+- When one PR fixes several independent problems, introduce each with a bold category header followed by its
+  explanation.
+- When a design choice was close, add an `## Alternatives considered` section, and flag known catches yourself ("One
+  catch worth flagging:") instead of waiting for review to find them.
+- Cross-link companion PRs (core and plugin, or stacked branches) in both descriptions.
+- Keep the description current: when review changes the scope or approach, update the description in the same push.
+- Changes visible in the UI include a screenshot or short recording.
 - Reply to review comments like a teammate: state the problem, suggest the fix, and keep the thread focused.
 - Put project-specific test instructions, deployment notes, and reviewer context in the host repository PR, not in this
   shared repository.
