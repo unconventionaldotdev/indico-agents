@@ -27,12 +27,14 @@
 # not `.agents/` or `AGENTS.md`, so the bridge points the former at the latter:
 #
 #   <host>/.claude               -> .agents     (so Claude finds the skills)
-#   <host>/CLAUDE.md             redirect to AGENTS.md via `@AGENTS.md`
-#   <host>/indico/CLAUDE.md      redirect to indico/AGENTS.md (when indico/ exists)
+#   <host>/CLAUDE.md             -> agents/indico/CLAUDE.md
+#   <host>/indico/CLAUDE.md      -> ../agents/indico/CLAUDE.md (when indico/ exists)
 #
-# The `indico/CLAUDE.md` redirect lives inside the upstream Indico submodule, so
-# the script adds it (alongside the `indico/AGENTS.md` symlink) to that
-# submodule's local `.git/info/exclude`.
+# The shared `CLAUDE.md` redirects to its sibling `AGENTS.md`, and Claude resolves
+# that import relative to the file, so one source serves both depths. The
+# `indico/CLAUDE.md` symlink lives inside the upstream Indico submodule, so the
+# script adds it (alongside the `indico/AGENTS.md` symlink) to that submodule's
+# local `.git/info/exclude`.
 #
 # Skill links and the `.claude` symlink are per-contributor (teammates use
 # different assistants) and should not be committed by the host repository. Add
@@ -41,8 +43,8 @@
 #   /.agents/skills/
 #   /.claude
 #
-# The generated `CLAUDE.md` is a stable redirect, identical for every clone, and
-# is committed alongside the root `AGENTS.md`.
+# The root `CLAUDE.md` symlink is identical for every clone and is committed
+# alongside the root `AGENTS.md`.
 
 set -euo pipefail
 
@@ -139,20 +141,6 @@ symlink_sibling() {
   echo "linked $dst_rel -> $target"
 }
 
-# Write a CLAUDE.md that redirects to its sibling AGENTS.md. Claude resolves the
-# `@AGENTS.md` import relative to the file, so the same body works at any depth.
-write_claude_redirect() {
-  local dst_rel="$1"
-
-  local dst_abs="$HOST_ROOT/$dst_rel"
-  mkdir -p "$(dirname "$dst_abs")"
-  cat >"$dst_abs" <<'EOF'
-# Claude Code entrypoint. Redirects to the shared cross-agent guidance.
-@AGENTS.md
-EOF
-  echo "wrote $dst_rel (redirect -> AGENTS.md)"
-}
-
 cd "$HOST_ROOT"
 
 # Universal markdown files (committed)
@@ -182,10 +170,9 @@ fi
 if [ "$INSTALL_CLAUDE" = true ]; then
   mkdir -p "$HOST_ROOT/.agents"
   symlink_sibling ".claude" ".agents"
-  write_claude_redirect "CLAUDE.md"
+  link_one "$SUBMODULE_ROOT/CLAUDE.md" "CLAUDE.md"
   if [ -d "$HOST_ROOT/indico" ]; then
-    write_claude_redirect "indico/CLAUDE.md"
-    exclude_in_nested_submodule "$HOST_ROOT/indico/CLAUDE.md"
+    link_one "$SUBMODULE_ROOT/CLAUDE.md" "indico/CLAUDE.md"
   else
     echo "skip indico/CLAUDE.md (host repository has no indico/ directory)"
   fi

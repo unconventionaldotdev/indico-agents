@@ -68,13 +68,13 @@ bash agents/indico/scripts/install-links.sh --skills --claude
 This:
 
 - Symlinks `.claude -> .agents`, so Claude finds the shared skills at `.claude/skills/`.
-- Writes `CLAUDE.md` (and `indico/CLAUDE.md` when an `indico/` directory exists), each redirecting to its sibling `AGENTS.md` with a single `@AGENTS.md` import.
+- Symlinks `CLAUDE.md` (and `indico/CLAUDE.md` when an `indico/` directory exists) to `agents/indico/CLAUDE.md`, a redirect to its sibling `AGENTS.md` through a single `@AGENTS.md` import. Claude resolves that import relative to the file, so one shared source serves both depths.
 
-The `indico/CLAUDE.md` redirect lives inside the upstream Indico submodule, so the script adds it (alongside the `indico/AGENTS.md` symlink) to that submodule's local `.git/info/exclude`. Both stay invisible to the submodule's `git status` without committing anything upstream.
+The `indico/CLAUDE.md` symlink lives inside the upstream Indico submodule, so the script adds it (alongside the `indico/AGENTS.md` symlink) to that submodule's local `.git/info/exclude`. Both stay invisible to the submodule's `git status` without committing anything upstream.
 
 ### Commit Or Ignore
 
-The generated `CLAUDE.md` is a stable redirect, identical for every clone, and is committed alongside the root `AGENTS.md`. The per-contributor symlinks are not committed (teammates use different assistants). Add them to the host repository's `.gitignore`:
+The root `CLAUDE.md` symlink is identical for every clone and is committed alongside the root `AGENTS.md`. The per-contributor symlinks are not committed (teammates use different assistants). Add them to the host repository's `.gitignore`:
 
 ```
 # .gitignore (host repository)
@@ -121,9 +121,9 @@ Use this order when instructions conflict:
 
 1. System, developer, and direct user instructions.
 2. Host-owned instructions: nested `AGENTS.md` files the host repository authors beside its own code.
-3. Shared guidance from this submodule. The host's root `AGENTS.md` symlinks to it; the generated root `CLAUDE.md` (`@AGENTS.md`) and the `.claude -> .agents` bridge both resolve back to it.
+3. Shared guidance from this submodule. The host's root `AGENTS.md` symlinks to it; the root `CLAUDE.md` symlink (`@AGENTS.md`) and the `.claude -> .agents` bridge both resolve back to it.
 
-Root `AGENTS.md`, root `CLAUDE.md`, and `.claude/` all surface shared guidance, not host overrides. The generated `CLAUDE.md` is rewritten on each run, so host-owned behavior and client-specific constraints belong in nested `AGENTS.md` files, not appended to it.
+Root `AGENTS.md`, root `CLAUDE.md`, and `.claude/` all surface shared guidance, not host overrides. `CLAUDE.md` is a symlink into this submodule, so host-owned behavior and client-specific constraints belong in nested `AGENTS.md` files, not appended to it.
 
 ## Updating The Submodule
 

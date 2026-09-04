@@ -80,7 +80,7 @@ bash agents/indico/scripts/install-links.sh
 # Also install shared skills into .agents/skills (read natively by Codex, Cursor, etc.)
 bash agents/indico/scripts/install-links.sh --skills
 
-# Claude users add the bridge (.claude -> .agents and CLAUDE.md redirects)
+# Claude users add the bridge (.claude -> .agents and CLAUDE.md symlinks)
 bash agents/indico/scripts/install-links.sh --skills --claude
 ```
 
