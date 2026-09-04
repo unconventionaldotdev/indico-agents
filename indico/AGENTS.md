@@ -47,7 +47,7 @@ This directory contains the upstream Indico codebase (https://github.com/indico/
 
 ## Contributing Upstream
 
-Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indico/indico-plugins-contrib`, learned from upstream review. They override the defaults in `CODING_GUIDELINES.md` where they conflict.
+Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indico/indico-plugins-contrib`, learned from upstream review. They override the defaults in `CONVENTIONS.md` where they conflict.
 
 ### Commits And Titles
 

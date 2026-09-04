@@ -1,4 +1,4 @@
-# Coding Guidelines
+# Conventions
 
 Shared baseline for Indico-related repositories. Host repository instructions are more specific and should win when they
 conflict with this document.

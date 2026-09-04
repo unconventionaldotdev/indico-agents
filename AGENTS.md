@@ -8,13 +8,13 @@ These instructions apply to Indico-based applications and the host repositories 
 
 ## Project Files
 
-- `CODING_GUIDELINES.md`: Shared coding, testing, style, git, and PR conventions.
+- `CONVENTIONS.md`: Shared coding, testing, style, git, and PR conventions.
 - `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
 - `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill.
 
 ## Before Changing Code
 
-1. Read `CODING_GUIDELINES.md` for the shared baseline.
+1. Read `CONVENTIONS.md` for the shared baseline.
 2. Read host repository instructions (deeper `AGENTS.md` files, `CLAUDE.md`, or files under `.claude/`) for repository-specific rules.
 3. Check the Available Skills below; prefer a matching skill over a manual approach.
 4. Inspect nearby code before adding new files.
@@ -32,7 +32,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 
 ## Coding And Testing
 
-- Follow `CODING_GUIDELINES.md` for coding, testing, style, git, and PR conventions.
+- Follow `CONVENTIONS.md` for coding, testing, style, git, and PR conventions.
 - Keep comments minimal: Indico favours self-evident code over explanation. Default to none and let clear names carry the meaning. Add one only for genuinely non-obvious rationale (the why, never the what). Most fit one short line; a why-comment about an external service's quirk or a fragile invariant may take the lines it needs. A comment that restates the method, signal, or test name is noise. Signal and public-API docstrings that document a contract are the exception and stay.
 - Use test-first development for production code, scripts, and helpers.
 - Prefer existing test patterns in the host repository over inventing new conventions.
@@ -74,7 +74,7 @@ Initialize the submodule and install shared links once after cloning:
 ```sh
 git submodule update --init --recursive
 
-# Universal markdown files (AGENTS.md, CODING_GUIDELINES.md, indico/AGENTS.md)
+# Universal markdown files (AGENTS.md, CONVENTIONS.md, indico/AGENTS.md)
 bash agents/indico/scripts/install-links.sh
 
 # Also install shared skills into .agents/skills (read natively by Codex, Cursor, etc.)
