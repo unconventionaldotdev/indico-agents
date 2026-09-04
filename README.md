@@ -34,7 +34,7 @@ bash agents/indico/scripts/install-links.sh
 # Plus shared skills (land in .agents/skills, read natively by Codex, Cursor, etc.)
 bash agents/indico/scripts/install-links.sh --skills
 
-# Claude users also install the bridge (.claude -> .agents and CLAUDE.md redirects)
+# Claude users also install the bridge (.claude -> .agents and CLAUDE.md symlinks)
 bash agents/indico/scripts/install-links.sh --skills --claude
 ```
 
@@ -46,6 +46,7 @@ See [HOST_INTEGRATION.md](HOST_INTEGRATION.md) for the full integration model, i
 - `CONVENTIONS.md`: Baseline coding, testing, style, git, and PR conventions for Indico-related work.
 - `indico/AGENTS.md`: Guidance for agents editing files inside an Indico submodule mounted by a host repository.
 - `skills/`: Reusable agent skills for working with Indico. Each subdirectory is one skill (`SKILL.md` plus optional helpers). Skills are plain markdown with YAML frontmatter and work with any AI assistant that follows that convention.
+- `CLAUDE.md`: Claude Code entrypoint redirecting to `AGENTS.md`. Host repositories symlink this at their root.
 - `MAINTAINERS.md`: Instructions for editing this repository.
 - `HOST_INTEGRATION.md`: How to add this repository as a submodule and surface files at host-native paths.
 - `scripts/install-links.sh`: Bootstrap script that creates relative symlinks from a host repository into this submodule.

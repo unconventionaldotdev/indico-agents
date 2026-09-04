@@ -7,6 +7,7 @@ Instructions for editing this repository (`indico-agents`). For agent guidance c
 - [README.md](README.md): Repository purpose, scope, and maintenance principles.
 - [AGENTS.md](AGENTS.md): Generic agent guidance, symlinked or referenced from host repositories.
 - [CONVENTIONS.md](CONVENTIONS.md): Shared coding, testing, style, git, and PR conventions.
+- [CLAUDE.md](CLAUDE.md): Claude Code entrypoint redirecting to [AGENTS.md](AGENTS.md), symlinked from host repositories.
 - [HOST_INTEGRATION.md](HOST_INTEGRATION.md): Instructions for mounting this repository as a submodule and surfacing files at host-native paths.
 
 ## Scope
