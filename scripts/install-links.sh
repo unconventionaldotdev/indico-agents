@@ -8,7 +8,7 @@
 # host-native paths:
 #
 #   <host>/AGENTS.md             -> agents/indico/AGENTS.md
-#   <host>/CODING_GUIDELINES.md  -> agents/indico/CODING_GUIDELINES.md
+#   <host>/CONVENTIONS.md  -> agents/indico/CONVENTIONS.md
 #   <host>/indico/AGENTS.md      -> ../agents/indico/indico/AGENTS.md
 #                                   (only when an `indico/` directory exists
 #                                   at the host repository root)
@@ -157,7 +157,7 @@ cd "$HOST_ROOT"
 
 # Universal markdown files (committed)
 link_one "$SUBMODULE_ROOT/AGENTS.md" "AGENTS.md"
-link_one "$SUBMODULE_ROOT/CODING_GUIDELINES.md" "CODING_GUIDELINES.md"
+link_one "$SUBMODULE_ROOT/CONVENTIONS.md" "CONVENTIONS.md"
 
 # Indico-submodule guidance (only when the host mounts upstream Indico)
 if [ -d "$HOST_ROOT/indico" ]; then

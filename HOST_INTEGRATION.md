@@ -36,10 +36,10 @@ Resulting symlinks:
 | Host path | Submodule target |
 |---|---|
 | `AGENTS.md` | `agents/indico/AGENTS.md` |
-| `CODING_GUIDELINES.md` | `agents/indico/CODING_GUIDELINES.md` |
+| `CONVENTIONS.md` | `agents/indico/CONVENTIONS.md` |
 | `indico/AGENTS.md` | `agents/indico/indico/AGENTS.md` (only when an `indico/` directory exists at the host root) |
 
-Commit `AGENTS.md` and `CODING_GUIDELINES.md` after the first run. The `indico/AGENTS.md` symlink lives inside the upstream Indico submodule and cannot be tracked by the host repository; the script appends it to the upstream submodule's local `.git/info/exclude` so it does not pollute that submodule's status. Each contributor must run the script once after cloning to recreate that local symlink.
+Commit `AGENTS.md` and `CONVENTIONS.md` after the first run. The `indico/AGENTS.md` symlink lives inside the upstream Indico submodule and cannot be tracked by the host repository; the script appends it to the upstream submodule's local `.git/info/exclude` so it does not pollute that submodule's status. Each contributor must run the script once after cloning to recreate that local symlink.
 
 ### Skills (Shared, Cross-Agent)
 
@@ -108,7 +108,7 @@ This repository imports shared Indico agent guidance at `agents/indico`.
 Before editing Indico-related code, read:
 
 - `agents/indico/AGENTS.md`
-- `agents/indico/CODING_GUIDELINES.md`
+- `agents/indico/CONVENTIONS.md`
 
 Host repository instructions override shared guidance when they are more specific. Put product behavior, local commands, branch names, fixtures, deployments, and client-specific rules in this host repository.
 ```

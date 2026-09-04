@@ -6,7 +6,7 @@ Instructions for editing this repository (`indico-agents`). For agent guidance c
 
 - [README.md](README.md): Repository purpose, scope, and maintenance principles.
 - [AGENTS.md](AGENTS.md): Generic agent guidance, symlinked or referenced from host repositories.
-- [CODING_GUIDELINES.md](CODING_GUIDELINES.md): Shared coding, testing, style, git, and PR conventions.
+- [CONVENTIONS.md](CONVENTIONS.md): Shared coding, testing, style, git, and PR conventions.
 - [HOST_INTEGRATION.md](HOST_INTEGRATION.md): Instructions for mounting this repository as a submodule and surfacing files at host-native paths.
 
 ## Scope
@@ -24,7 +24,7 @@ Instructions for editing this repository (`indico-agents`). For agent guidance c
 
 ## Before Changing Files
 
-1. Read [README.md](README.md) and [CODING_GUIDELINES.md](CODING_GUIDELINES.md).
+1. Read [README.md](README.md) and [CONVENTIONS.md](CONVENTIONS.md).
 2. Inspect nearby documents before adding a new one.
 3. Keep changes scoped to the requested guidance.
 4. Preserve generic wording. Use terms like "host repository", "client project", and "Indico-based application".
