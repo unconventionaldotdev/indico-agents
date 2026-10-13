@@ -41,6 +41,19 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Exported components destructure props in the signature; optional callbacks are optional in the body too: define the handler unconditionally and pass `cb ? handler : null`, never `const handler = cb && (() => ...)`.
 - `FinalField` with `validate={null}` must keep the default required validator.
 - Pure helpers at module level, not inside the component.
+- `if (!show) return null;` before the JSX instead of wrapping the whole tree in `show && (...)`; keeps the diff reviewable.
+- Local imports go before the stylesheet import.
+- `useSelector(selector)`, not `useSelector(state => selector(state))`; `items.find(...)`, not `const [x] = items.filter(...)`.
+- Never call `form.change` during render; use `useEffect`. Unset with `undefined`, not `null` (some field types reject `null`).
+- Destructure every prop the component reads; `...rest` is only for pass-through.
+- Form-wide derived state (hidden fields) is computed once in a logic-only component (`useFormState` plus a dispatch to redux), never by subscribing every item to form state. Check with React DevTools "Highlight updates" while typing.
+- Coupled inputs (pick a field, then a value whose options depend on it) are one custom component driven by final-form state, not two fields with local `useState`.
+- Per-type behavior (`showIfOptions`, `getDataForCondition`) lives in the field registry, not in `if/else` chains on `inputType`.
+- Ambiguous short labels get an i18n comment: `/* i18n: Form field */` above the attribute (plain comment, not `{/* */}`). Labels follow cardinality ("Has value" / "Has values").
+- A `ready` flag in state avoids flashing items that will be hidden once conditions resolve.
+- Management views never hide items; they mark them with an always-visible icon plus tooltip and a background that changes when the condition is unmet. Icon size and alignment match the existing ones (locked, retention).
+- Options the user must not pick stay visible but `disabled` in dropdowns.
+- Function names follow the component spelling (`checkboxShowIfOptions`); PropTypes are the real type (`PropTypes.array`, not `node`).
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
 - Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range).
 - Conditionally rendered `Final*` fields unregister on unmount and lose their value; hide with CSS or keep mounted.

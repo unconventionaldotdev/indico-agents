@@ -35,6 +35,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Dummy names (`foo`, `FooPlugin`), never client or product prefixes.
 - `with signal.connected_to(handler):`; `client.post(url, json=...)`.
 - Fake persisted rows get an explicit `id` when the code branches on it.
+- Build related rows through relationships (`parent=section`), not `parent_id=section.id` after a manual flush. Drop fixture arguments the test does not read. Multi-line dict literals close `}` on its own line.
 
 ## Layout
 
@@ -57,6 +58,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Every entry point building the same payload (user form, on-behalf, bulk).
 - State transitions with payment.
 - User editing values a manager set outside the user range.
+- Dependency chains (a -> b -> c), every type allowed as a dependency, edits that omit unchanged fields, manager-only data sent by a user (ignored).
 
 ## Plugin Boilerplate
 

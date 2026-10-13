@@ -47,7 +47,7 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Changelog And Versioning
 
 - Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role for settings.
-- One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue; no space before a comma in role lists.
+- All contributors go in one ``:user:`a, b, org` `` block; a long-running PR moves its entry to the version it lands in. One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue; no space before a comma in role lists.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them.
 - When an option is renamed during review, the changelog entry, labels and description follow; one entry per PR, no duplicates left behind.
 - Plugins: README changelog bullet under the unreleased version (no new heading while the previous one is unreleased). Version tracks the first two Indico parts; new plugins start at `3.3-dev` with `### 3.3` / "Initial release". `-dev` may stay forever without PyPI releases. `dependencies = ['indico>=3.3.X.dev0']` when built against master.
@@ -79,6 +79,8 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Conversation
 
 - Reply per thread with the commit link and, when not self-evident, how it was verified; resolve threads you addressed (outdated code hides them otherwise).
+- One thread per point: open review comments on a dummy diff line rather than piling points into one issue comment.
+- Upstream may push refactors directly (moving config to columns, extracting a controller component); build on them instead of keeping a parallel implementation. Resolve every TODO in the description before asking for the final review.
 - When a side feature stalls the review, revert it and merge the core change; remove every leftover (imports, widget options, whitespace) of the reverted part.
 - Disagree with reasoning and real constraints, then let upstream decide; a documented tradeoff is accepted.
 - When upstream cannot reproduce, debug in the thread and post the exact finding.
