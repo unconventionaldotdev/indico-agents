@@ -18,14 +18,14 @@ Check the touched Python files and their callers against every item.
 - `@dataclass(frozen=True)` over `namedtuple`; plain defaults (`name: str = ''`, no `field()`), required attribute first so callers never pass `None, None`.
 - Deduplicate by key with a dict (`{r.email: r}`), not by hashing dataclasses; test the overlap case (same email from two sources).
 - Expensive work inside a send loop (template module, agenda query) is computed once or memoized with `memoize_request`.
-- Early return for the short branch, then flat code for the main one; a two-branch assignment is a ternary.
+- Early return for the short branch, then flat code for the main one; a two-branch assignment is a ternary. Never a nested ternary: three branches become a local `def` with `if/elif/else`.
 - Truthiness checks (`if tags:`), never `len(x) > 0`; `not all(...)` over `any(not ...)`.
 - `match` over if/elif chains on enums, with `case _: assert False` for the impossible branch.
 - Use the existing abstraction (`obj.protection_parent`) instead of `getattr` chains over known parent attributes.
 - Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment.
 - Short names everywhere (`all_tags`, not `all_tags_must_be_present`); `tpl` for template variables.
 - New public symbols are re-exported in the module `__init__` and listed in `__all__`.
-- Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`. Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict; values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
+- Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`. Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict; query-string choices are an `IndicoStrEnum` with `auto()`, never a nested `(Enum)` with int values; values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
 - A workaround for surprising framework behavior (`form.x.enum[form.x.data]`) is a bug to trace with a debugger and fix at the source (`strip_whitespace` must not convert str enums), not a line to keep.
 - Bulk endpoints whitelist the compatible actions in the webargs validation (`fields.Enum(..., validate=validate.OneOf([...]))`), not with early returns in the body; `fields.Enum`, never `marshmallow_enum.EnumField`. Items the bulk action skips are reported, not silently dropped.
 - Remove methods and imports a refactor left unused.
@@ -105,7 +105,8 @@ Check the touched Python files and their callers against every item.
 - Comments state facts that hold; limitations are verified; hardcoded lists cite their source (provider docs).
 - `# XXX` for external quirks; a knowingly rough approach gets a one-line why-it-is-safe comment.
 - Wording matches the module (the Zoom plugin says "Zoom meeting"); user-facing labels are plain words ("Short name / abbreviation", not "Code").
-- Docstrings: Sphinx roles (`:class:`, `:exc:`, `:data:`), double-backtick literals.
+- Docstrings: Sphinx roles (`:class:`, `:exc:`, `:data:`), double-backtick literals. Every documented `:param:` exists in the signature; generic helpers (`render_breadcrumbs`) get no object-specific params.
+- Leftovers of a discarded approach (an unused class attribute, a docstring param, a `return` on an unused value) are removed before review.
 
 ## Imports
 
@@ -128,7 +129,14 @@ Check the touched Python files and their callers against every item.
 - Endpoints useful only to managers check the management permission even when the data is not sensitive.
 - User-provided names never become path components: match against a whitelist (`dir.glob('*.yaml')`, compare `stem`) and derive later paths from the matched entry so static analysis sees no tainted path.
 - Path parameters are parsed with `@use_kwargs({...}, location='view_args')` (`fields.Date`), not `dateutil.parser.parse(request.view_args[...])`.
-- RH and endpoint names say what they do (`RHBookingOccurrenceLink`, `booking_occurrence_link`); an `Actions` suffix only when one RH covers several actions.
+- RH and endpoint names say what they do (`RHBookingOccurrenceLink`, `booking_occurrence_link`, `registrations_update_price` rather than `registrations_base_price`); an `Actions` suffix only when one RH covers several actions. URL paths use hyphens (`/update-price`), never underscores.
+- Query-string args are snake_case and parsed with `@use_kwargs({'group_by': EnumField(GroupBy, load_default='category')}, location='query')`, never `request.args.get` plus a manual enum lookup.
+- Feature code lives in the module owning the object it changes (a registration fee form and RH in the registration module, not in payments), even when the feature is gated on another module's feature flag.
+- Bulk actions touch only items in the applicable state; other states are skipped or covered by an explicit option (an action dropdown: remove, sync to default, custom value, plus a switch for the edge state). A form only reached from a dialog is `methods=('POST',)`; it carries `submitted = HiddenField()` and overrides `is_submitted()` as `super().is_submitted() and 'submitted' in request.form`, so the first POST renders instead of validating.
+- When a dialog action changes what the list shows, return `jsonify_data(flash=False)` and reload the page so the flashed messages appear after the reload.
+- Never load a whole large table (all categories) to post-process it; use the denormalized data on the row (`detailed_category_chain`, undeferred to avoid O(n) queries) and compute on the server.
+- A state that cannot happen raises a plain `Exception` (logged, visible to admins), never `NotFound` or another HTTP error that reaches the client as a silent 4xx. No fake default objects (`{'id': 0, ...}`) for impossible cases.
+- Page classes build breadcrumbs by overriding `_get_breadcrumbs` with `render_breadcrumbs(_('Calendar'), category=self.category)`; the last crumb is not a link. A breadcrumb trail behaves the same on every crumb (no per-crumb target logic).
 - Keys from client-controlled or externally stored data are read with `.get()` so bad input fails with a validation error, not a `KeyError`.
 - References submitted by managers are validated in the schema with `self.context`: same parent (`Model.query.with_parent(parent).filter_by(id=...).first()`), no self-reference, no cycles (walk the chain with a seen set), no disabled or manager-only targets, and a per-type capability flag on the field implementation (`allow_condition`).
 - Deleting or disabling an item others depend on is refused with `NoReportError.wrap_exc(BadRequest(_('...')))`, including the parent section; no silent cleanup of dependents.
@@ -156,6 +164,9 @@ Check the touched Python files and their callers against every item.
 - Signals live in their topic module (`signals/affiliations.py`), named like the existing family.
 - Core hooks need a core consumer.
 - Plugins register handlers with `self.connect(signal, handler, sender=...)` in `init()`, never module-level `connect_via`.
+- Signal kwargs have no defaults: an absent kwarg is the normal case, the special case is an explicit `silent=True` (or `no_log`), never `log=True` that every handler must default itself.
+- A state transition performed by hand (a bulk action setting `complete`) still fires the state-change signal and notifies; pass `silent=True` when the generic log entry would mislead and log the action yourself.
+- A handler that always yields exactly one item returns it instead of being a generator.
 
 ## Forms (WTForms)
 
@@ -169,7 +180,9 @@ Check the touched Python files and their callers against every item.
 - Never mutate `field.data` in `validate_*`; normalize in `process_formdata` or `post_validate`.
 - Field definitions sit with the other fields, one kwarg per line when long; drop descriptions that restate the label. Keep the label on fields whose label is not rendered when sibling forms set it. Order fields by how the user fills them (file, delimiter, then switches) and keep the ordering tuple in sync.
 - Single-use message strings are inlined in the `flash()` call, not exposed as properties.
-- Values the client never changes are form constructor kwargs (`def __init__(self, *args, event, mode, **kwargs)`), not hidden fields round-tripped through the browser.
+- Values the client never changes are form constructor kwargs (`def __init__(self, *args, event, mode, **kwargs)`), not hidden fields round-tripped through the browser; never `kwargs.pop('x')`.
+- `Decimal('0.01')` from a string, never `Decimal(0.01)`. `NumberRange` bounds match the model constraint (`999999999.99`) and the field's intent (`min=0.01` when zero is a separate action) so the right validator produces the message.
+- Prices in labels and choices go through `format_currency`; a dialog changing a value shows the currency and pre-fills the current value. A switch description states the effect ("If enabled, registrations in the X state ... will ...").
 - Relationships are edited through query fields (`IndicoQuerySelectMultipleCheckboxField`, `IndicoQuerySelectMultipleTagField`) so `populate_obj` assigns them; no id lists resolved by hand in the RH. Relationships already exclude soft-deleted rows; sort with `natural_sort_key`.
 - "Nothing selected means no restriction" is stated in the description; labels stay short enough not to wrap ("Filter by forms").
 - Rich-text fields that end up in emails: `[NoRelativeURLs()]` plus `TinyMCEWidget(absolute_urls=True, height=300)`.
@@ -207,7 +220,7 @@ Check the touched Python files and their callers against every item.
 - Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist; `export.yaml` orders the rows topologically so idrefs resolve on import.
 - Count queries on a large event before and after a list change; a per-row property that touches a relationship (latest comment date) turns a fixed number of queries into one per row. Compute it in SQL as a `column_property` with a correlated scalar subquery, registered in a module-level `@listens_for(orm.mapper, 'after_configured', once=True)` function (never inside the class), `deferred=True` plus `undefer()` when few views need it. A real column updated on every write is the fallback.
 - A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
-- Multi-line queries: `(` on its own line, `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
+- Multi-line queries: either `(` on its own line or `(Model.query` with chained calls aligned under it; match the style of the adjacent queries in the file. `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
 - `.one()` on lookups that cannot miss (soft-deleted rows still exist); no defensive `- {None}` or `or {}` without a reproducible case, and a comment when one exists.
 - Set intersection is `a & b`, never `bool(a.intersection(b))`. Subset checks are `keywords <= allowed`; "any invalid" is `invalid := values - allowed`; `sorted(a & b)` over list comprehensions with membership tests; `dict.setdefault` over `if key not in d`.
 - A POST that modifies data ends with `return redirect(url_for('.same_page'))`, never by rendering the page (F5 would resubmit).
@@ -239,7 +252,7 @@ Check the touched Python files and their callers against every item.
 - Static variant in the format string (meeting vs webinar) for Sentry grouping, `%s` for data; `# noqa: G004` on static f-strings.
 - Expected external rejections handled, not logged as warnings each run.
 - Errors say how to fix; system-level errors (admin disabled a feature) need no i18n. "not allowed" over "not valid"; proofread grammar ("are entered").
-- Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating). Cross-object actions (a booking linked to an event) are logged on the event with ids and times in `data`, times in the event timezone.
+- Event log: module is the object ("Registration", also for a fee change), log only actual changes (compute added/removed before mutating); items whose value did not change are left out of the entry and the count, and state changes caused by the action are logged too. Flash with `ngettext`, subject first ("Registration fee has been updated for {} registrations"). Titles say "Update", not "Edit", for changing a value. Cross-object actions (a booking linked to an event) are logged on the event with ids and times in `data`, times in the event timezone.
 - Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text; no extra `meta` keys that break existing filters.
 - Log `data` stores useful detail (attachment filenames), not a bare count; key names say what they hold. `data` keys are human-friendly (`'User ID'`); keys without a value (`IP` outside a request) are omitted, not set to `None`.
 - Email log records `alternatives` so re-sending reproduces the original multipart message.

@@ -52,7 +52,7 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Changelog And Versioning
 
 - Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role for settings.
-- All contributors go in one ``:user:`a, b, org` `` block; a long-running PR moves its entry to the version it lands in. One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue; no space before a comma in role lists.
+- All contributors go in one ``:user:`a, b, org` `` block; a long-running PR moves its entry to the version it lands in. One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` lists every issue the PR closes in one role (``:issue:`N, M` ``), grouped per entry when a PR closes issues for two features; numbers are verified against the linked issue; no space before a comma in role lists.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them. A PR that extends a feature and adds a new admin option gets two entries (extend the existing one, add one for the option), both wrapped at the surrounding line length.
 - Third-party assets (placeholder images, icons) state their license in the thread; CC0 or an icon set already in use is fine.
 - When an option is renamed during review, the changelog entry, labels and description follow; one entry per PR, no duplicates left behind.
@@ -77,7 +77,7 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Commits And Branch Hygiene
 
 - Core: capitalized plain imperative, no prefix. Plugin repos: `Component: Sentence case`. `indico-plugins` merges unsquashed, so each subject stands alone.
-- Rebase, never the "Update branch" button; rebase after tooling changes (`ruff check --fix`, `ruff format`).
+- Rebase, never the "Update branch" button or a merge commit (`git pull --rebase origin master`); rebase after tooling changes (`ruff check --fix`, `ruff format`).
 - Pull before pushing; reviewers push to contributor branches.
 - Lint-clean before review.
 - Run every change once, including one-liners.

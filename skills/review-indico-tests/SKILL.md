@@ -42,7 +42,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 ## Layout
 
 - `*_test.py`; plugins keep tests in `tests/`, fixtures in the package.
-- Continuation lines aligned with the opening parenthesis; no blank line after `class X:`; no banner comments.
+- Continuation lines aligned with the opening parenthesis; a call that fits in one line stays on one line; no blank line after `class X:`; no banner comments; no `print()`.
 - Plain functions, no test classes (a class per module hints the module is too big).
 - Every new validation rule and every non-trivial query (grouped tag matching, subqueries) ships with a test.
 - One-line docstrings only when the name cannot carry the behavior.
