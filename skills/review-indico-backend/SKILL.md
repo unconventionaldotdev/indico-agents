@@ -47,7 +47,9 @@ Check the touched Python files and their callers against every item.
 - Reuse the local already computed (`user.email`, not `session.user.email` after `user = session.user`).
 - Previews use a lightweight mock object (`MockX(regform, first_name, last_name)`), not an unsaved model plus `self.commit = False`. When the real model's properties are needed, link the instance only to the form (never to the event or other persisted rows), fill the default personal data fields so the output does not look broken, and confirm in the SQL log that nothing is inserted. Sample values are dummy names and `test@example.com`, never translated placeholders.
 - Request data comes through `@use_kwargs` (`fields.Enum(StateEnum, required=True, validate=validate.OneOf([...]))`), never `request.form.get`; `@no_autoflush` goes below the webargs decorator.
-- Internal errors that no user can trigger (`'Invalid state'`) get no i18n.
+- Internal errors that no user can trigger (`'Invalid state'`) get no i18n. Model methods raise `ValueError` (plain f-string) for states they cannot handle, as a catch-all so a new enum member fails loudly; HTTP exceptions are raised only in the RH, which wraps the model error with `NoReportError.wrap_exc(exc)` and checks the user-facing precondition itself.
+- State-changing model methods take no `silent` flag and return nothing; the caller decides how to handle a no-op. A signal already sent by the inner method is not sent again by the outer one.
+- Free-text user inputs (names, affiliation, address, phone, comments) carry a max length on both the schema and the client.
 - Dialog triggers are declarative (`data-ajax-dialog`, `data-href`, `data-method`, `data-title` built with `html_params` in the form constructor, where the request context is available), not JS in the template setting `data-href` at runtime.
 - `form.identifier.data`, not `form.data['identifier']` (builds the whole dict for one value); `user.local_identity`, not `next(iter(user.local_identities))`.
 - A branch unreachable after an earlier `isinstance(exc, (A, B))` is a bug, not dead code to keep.
