@@ -45,7 +45,7 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Changelog And Versioning
 
 - Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role for settings.
-- One entry per feature; a missing feature is an Improvement, not a Bugfix; wording is short and user-facing. Entry goes under the release being developed, not an older one.
+- One entry per feature; a missing feature is an Improvement, not a Bugfix; wording is short and user-facing. Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them.
 - Plugins: README changelog bullet under the unreleased version (no new heading while the previous one is unreleased). Version tracks the first two Indico parts; new plugins start at `3.3-dev` with `### 3.3` / "Initial release". `-dev` may stay forever without PyPI releases. `dependencies = ['indico>=3.3.X.dev0']` when built against master.
 - README title "<Name> Plugin".
@@ -75,7 +75,8 @@ Run first. A PR that fails here gets no line-by-line review.
 
 ## Conversation
 
-- Reply per thread with the commit link and, when not self-evident, how it was verified.
+- Reply per thread with the commit link and, when not self-evident, how it was verified; resolve threads you addressed (outdated code hides them otherwise).
+- When a side feature stalls the review, revert it and merge the core change; remove every leftover (imports, widget options, whitespace) of the reverted part.
 - Disagree with reasoning and real constraints, then let upstream decide; a documented tradeoff is accepted.
 - When upstream cannot reproduce, debug in the thread and post the exact finding.
 - Apply and test patches upstream posts; say so.

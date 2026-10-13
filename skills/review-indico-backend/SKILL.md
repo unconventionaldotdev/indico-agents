@@ -18,7 +18,10 @@ Check the touched Python files and their callers against every item.
 - `@dataclass(frozen=True)` over `namedtuple`; plain defaults (`name: str = ''`, no `field()`), required attribute first so callers never pass `None, None`.
 - Deduplicate by key with a dict (`{r.email: r}`), not by hashing dataclasses; test the overlap case (same email from two sources).
 - Expensive work inside a send loop (template module, agenda query) is computed once or memoized with `memoize_request`.
-- Early return for the short branch, then flat code for the main one.
+- Early return for the short branch, then flat code for the main one; a two-branch assignment is a ternary.
+- Truthiness checks (`if tags:`), never `len(x) > 0`.
+- Short names everywhere (`all_tags`, not `all_tags_must_be_present`); `tpl` for template variables.
+- New public symbols are re-exported in the module `__init__` and listed in `__all__`.
 - Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`.
 - Remove methods and imports a refactor left unused.
 - Functions that never touch `self` go to `util.py`.
@@ -54,6 +57,8 @@ Check the touched Python files and their callers against every item.
 - Service code tolerates no request context (`session.user if session else None`); test the Celery path, not only "send now".
 - Previews use the current user's name and email as sample data, not `<FIRST-NAME>` markers; webargs `location` is omitted when it is the form/json default.
 - Custom emails render through `emails/custom.html`; plain-text alternatives via `html_to_markdown(..., inline_links=False)`.
+- Upstream prefers text/plain emails; HTML only as multipart with a separate text template. `EmailMultiAlternatives` is safe for plain emails too.
+- Keys added to queued payloads (email dicts) are read with `.get()` in the consumer: messages enqueued before the upgrade lack them. Keep related kwargs together (`connection=` last).
 - A changed signature lands on every override and subclass.
 - Prefer an attribute or keyword with default over a new positional argument when plugins subclass the class.
 - Index keys the code itself wrote (`data['body']`, `email['cc']`); `.get('x', [])` only for genuinely optional keys, never `.get('x') or []`.
@@ -92,6 +97,10 @@ Check the touched Python files and their callers against every item.
 - New helper endpoints start admin-only; loosen later when another consumer appears.
 - Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')` with the kwarg named explicitly (never `**kwargs`), also instead of `Model.get(request.view_args[...])`; always call the base `_process_args` even when it is a no-op.
 - Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`.
+- Child objects are loaded through the parent (`Model.query.with_parent(self.event).filter_by(id=...).first_or_404()`), one chained call per line; the model gets a `locator_property` including the parent id (on the concrete subclass when the base lacks it) and the RH declares `normalize_url_spec = {'locators': {lambda self: self.entry}}`.
+- `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending).
+- The response to a mutation carries everything the UI must refresh (`has_pending_invitations`), not only the list.
+- "All" is the absence of the key or `None`, never an empty list.
 - RH docstrings describe what the handler does now, not the earlier design.
 - `@use_args(Schema)` with a positional `data` when the dict is passed on; `@use_kwargs` only when fields are consumed individually.
 - Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta`.
@@ -121,6 +130,10 @@ Check the touched Python files and their callers against every item.
 - Never mutate `field.data` in `validate_*`; normalize in `process_formdata` or `post_validate`.
 - Field definitions sit with the other fields, one kwarg per line when long; drop descriptions that restate the label.
 - Values the client never changes are form constructor kwargs (`def __init__(self, *args, event, mode, **kwargs)`), not hidden fields round-tripped through the browser.
+- Relationships are edited through query fields (`IndicoQuerySelectMultipleCheckboxField`, `IndicoQuerySelectMultipleTagField`) so `populate_obj` assigns them; no id lists resolved by hand in the RH. Relationships already exclude soft-deleted rows; sort with `natural_sort_key`.
+- "Nothing selected means no restriction" is stated in the description; labels stay short enough not to wrap ("Filter by forms").
+- Rich-text fields that end up in emails: `[NoRelativeURLs()]` plus `TinyMCEWidget(absolute_urls=True, height=300)`.
+- Widgets that hide or show other fields (`HiddenUnless`) need the underlying input in the widget HTML, not rendered by React: `initForms` runs before the script.
 - Never append to `field.validators` or change `field.flags` in `__init__` (leaks into every instance); use `inject_validators` or `del self.field`.
 - Subjects and other non-HTML strings get no `strip_tags`; escape where they are rendered.
 - Check rendered field order after overriding an inherited field.
@@ -140,9 +153,12 @@ Check the touched Python files and their callers against every item.
 - Filter soft-deleted parents at every level, with a test per level.
 - Query the subtype class (`RegistrationFormField`) for subtype-only constraints.
 - New FK to `User`: backref, alphabetized backref list, `merge_users` handling.
-- `#:` column docs; keep the blank line between columns and relationships. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters.
+- `#:` column docs; keep the blank line between columns and relationships. `down_revision` points at the current head when the PR is opened and again before merge. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters.
 - `column_property` changes that back an index update the index in `upgrade` and `downgrade`; `indico db_diff` must be empty.
 - Pick NULL or empty string, not both; NULL gets `CheckConstraint("col != ''")`.
+- Association tables declare `ondelete='CASCADE'` on both foreign keys; the closing parenthesis of `op.create_table` sits on the last argument line.
+- New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).
+- Switching stored text from plain to HTML uses `RenderModeMixin` with a `render_mode` column (legacy rows stay plain text, new rows HTML), never a destructive data migration.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
 - Partial-index `WHERE` clauses must be justified.
 - Iterate enum members, never `range` over their values; SQL in triple-quoted strings indented under the call.
@@ -164,8 +180,11 @@ Check the touched Python files and their callers against every item.
 - Expected external rejections handled, not logged as warnings each run.
 - Errors say how to fix; system-level errors (admin disabled a feature) need no i18n. "not allowed" over "not valid"; proofread grammar ("are entered").
 - Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating).
-- Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text. `data` keys are human-friendly (`'User ID'`); keys without a value (`IP` outside a request) are omitted, not set to `None`.
+- Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text; no extra `meta` keys that break existing filters.
+- Log `data` stores useful detail (attachment filenames), not a bare count; key names say what they hold. `data` keys are human-friendly (`'User ID'`); keys without a value (`IP` outside a request) are omitted, not set to `None`.
 - Email log records `alternatives` so re-sending reproduces the original multipart message.
+- Settings pages log changes: `changes = {k: (old[k], v) for k, v in form.data.items() if old[k] != v}`, then `AppLogEntry.log(..., data={'Changes': make_diff_log(changes, log_fields)})`; summary names the single changed field or says "Data updated". Extend `make_diff_log` when a new value type appears.
+- Global logging goes through `AppLogEntry.log()` (static, mirrors `Event.log`); nothing is monkeypatched onto `app`.
 - External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
 - End-user warnings are one concrete sentence; no double spaces or typos in user strings.
 - Log arguments carry only what helps (no event id when it cannot be acted on).
@@ -190,6 +209,7 @@ Check the touched Python files and their callers against every item.
 ## Security
 
 - Escape user strings in HTML messages; secrets from config never reach the browser.
+- Never `| safe` on user content; `sanitize_html` or a render-mode `Markup` wrapper. Plain-text previews render no HTML at all.
 - Plugin endpoints scoped to event, category or regform.
 - Provider defaults verified (`approval_type`).
 - Standard primitives for hardening: `hmac.compare_digest`, `secrets`; no signatures in logs.
@@ -206,3 +226,5 @@ Check the touched Python files and their callers against every item.
 - Defaults only where they are what the user would choose.
 - Keep source formats when converting data (PNG stays PNG).
 - Every entry point building the same payload gets the behavior (user form, manager on-behalf, bulk).
+- A locked value is written from its source (`value = invitation.email`), not by marking the field read-only and leaving it blank.
+- Labels name the behavior plainly ("Lock email address", "cannot be changed during registration"); verbs are consistent across UI, flash messages and changelog ("re-send").
