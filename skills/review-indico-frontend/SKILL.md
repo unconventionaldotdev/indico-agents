@@ -40,7 +40,10 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - All user text through `Translate` / `Translate.string`.
 - Exported components destructure props in the signature; optional callbacks are optional in the body too: define the handler unconditionally and pass `cb ? handler : null`, never `const handler = cb && (() => ...)`.
 - `FinalField` with `validate={null}` must keep the default required validator.
-- Pure helpers at module level, not inside the component.
+- Pure helpers at module level, not inside the component. Short named handlers above the JSX (`refresh`) over inline dispatch calls; the name says what it does, not what it looks like.
+- No `console.debug` or other debug leftovers in the diff.
+- A comparison token that is not a timestamp (last update plus an "undone" marker) is named so nobody parses it as one; compare with `!==` when the value never decreases.
+- When concurrent edits outdate the view, every action is disabled, the comment form included; verify by changing state in a second tab. A prop that resets a form's state is a bug to understand, not a reason to leave the form enabled.
 - `if (!show) return null;` before the JSX instead of wrapping the whole tree in `show && (...)`; keeps the diff reviewable.
 - Local imports go before the stylesheet import.
 - `useSelector(selector)`, not `useSelector(state => selector(state))`; `items.find(...)`, not `const [x] = items.filter(...)`.
@@ -77,6 +80,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A `.module.scss` that is all `:global` is a plain `.scss`.
 - No inline `<style>`; reuse existing classes before adding new ones.
 - Never widen or restyle shared legacy classes (`exclusivePopup`); scope through `ajaxDialog({dialogClasses: 'editor-output'})` or a module stylesheet.
+- Markup and classes on event display pages are a public API for custom stylesheets: keep element types (`span.conference-title-link`) and floats, test against events with custom CSS, and ship a new layout behind an opt-in setting with the old CSS as default.
 
 ## Jinja
 

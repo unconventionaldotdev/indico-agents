@@ -29,7 +29,8 @@ Run first. A PR that fails here gets no line-by-line review.
 
 ## Consistency
 
-- Apply the same fix everywhere the pattern exists, broken or not.
+- Apply the same fix everywhere the pattern exists, broken or not. A new option on one upload (CSV delimiter) is expected on every upload of that kind; a follow-up PR is acceptable when announced.
+- Close a PR superseded by a newer one instead of leaving both open.
 - A new scope, permission or capability lands on every surface at once: declaration tuples (legacy included), README ("optional, only needed for X"), settings check, tests.
 - Features touching users without an account must specify how those users receive the result.
 - Every surface showing filtered data uses the filtered accessor.
