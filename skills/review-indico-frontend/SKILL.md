@@ -46,6 +46,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 - A `.module.scss` that is all `:global` is a plain `.scss`.
 - No inline `<style>`; reuse existing classes before adding new ones.
+- Never widen or restyle shared legacy classes (`exclusivePopup`); scope through `ajaxDialog({dialogClasses: 'editor-output'})` or a module stylesheet.
 
 ## Jinja
 
@@ -56,7 +57,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `_()` inside macro arguments (`{% trans %}` does not work there); plugin gettext in plugins.
 - Every counter or list uses the same filtered accessor.
 - Calls to action and links match the viewer's rights; a restricted role sees no link it cannot follow.
-- Attribute continuation lines align with the first attribute; no blank line after a block opener.
+- Attribute continuation lines align with the first attribute; no blank line after a block opener; tag contents indented; no collapsing of multi-line markup into one long line.
 - Plugin output reuses the core look (the standard join button, not a raw URL); pick the best available template hook and note the better one for later.
 
 ## Verification
