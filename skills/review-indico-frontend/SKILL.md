@@ -77,7 +77,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Ambiguous short labels get an i18n comment: `/* i18n: Form field */` above the attribute (plain comment, not `{/* */}`). Labels follow cardinality ("Has value" / "Has values").
 - A `ready` flag in state avoids flashing items that will be hidden once conditions resolve.
 - Management views never hide items; they mark them with an always-visible icon plus tooltip and a background that changes when the condition is unmet. Icon size and alignment match the existing ones (locked, retention).
-- Options the user must not pick stay visible but `disabled` in dropdowns.
+- Options the user must not pick stay visible but `disabled` in dropdowns. A toggle button that is on but locked keeps `active` and adds `disabled`, so its state stays visible.
+- `full_width_base.html` only when the content needs the width; check the page on a wide screen before switching the base template.
 - Function names follow the component spelling (`checkboxShowIfOptions`); PropTypes are the real type (`PropTypes.array`, not `node`).
 - Selectors returning a function are nouns (`getPriceFormatter`, not `getFormatPrice`); no `_` prefix on locals unless shadowing a module name.
 - `<Translate>` with `<Param>` inside JSX; `Translate.string` only outside markup.

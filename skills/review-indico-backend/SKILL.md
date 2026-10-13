@@ -22,7 +22,9 @@ Check the touched Python files and their callers against every item.
 - Truthiness checks (`if tags:`), never `len(x) > 0`; `not all(...)` over `any(not ...)`.
 - `match` over if/elif chains on enums, with `case _: assert False` for the impossible branch.
 - Use the existing abstraction (`obj.protection_parent`) instead of `getattr` chains over known parent attributes.
-- Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment.
+- Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment. Titles nobody displays are removed together with their `_()` markers (`IndicoIntEnum`, not `RichIntEnum`). Ambiguous short strings get `pgettext('context', ...)`; `_` is never wrapped in a local helper, which breaks string extraction.
+- A member classification lives on the enum as a property (`RevisionType.is_editor_action`) and the model exposes it under a precise name (`is_editor_revision`), not a method listing members.
+- IDs compare with `is not None`; `if editor_id` treats id `0` as missing.
 - Short names everywhere (`all_tags`, not `all_tags_must_be_present`); `tpl` for template variables.
 - New public symbols are re-exported in the module `__init__` and listed in `__all__`.
 - Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`. Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict; query-string choices are an `IndicoStrEnum` with `auto()`, never a nested `(Enum)` with int values; values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
@@ -137,6 +139,8 @@ Check the touched Python files and their callers against every item.
 - RH and endpoint names say what they do (`RHBookingOccurrenceLink`, `booking_occurrence_link`, `registrations_update_price` rather than `registrations_base_price`); an `Actions` suffix only when one RH covers several actions. URL paths use hyphens (`/update-price`), never underscores.
 - Query-string args are snake_case and parsed with `@use_kwargs({'group_by': EnumField(GroupBy, load_default='category')}, location='query')`, never `request.args.get` plus a manual enum lookup.
 - Feature code lives in the module owning the object it changes (a registration fee form and RH in the registration module, not in payments), even when the feature is gated on another module's feature flag.
+- A bulk action offers only the actions whose outcome users expect for every selected item (bulk "reject" on a change proposal sends it back to the submitter: not offered). `EVENT_FEATURE = None` only where a page must work with the feature off (a dashboard), never on a list page whose APIs fail without it.
+- Notifications pick the user who performed the action (the revision's author), not the first revision's author; check with two contributors acting in turn.
 - Bulk actions touch only items in the applicable state; other states are skipped or covered by an explicit option (an action dropdown: remove, sync to default, custom value, plus a switch for the edge state). A form only reached from a dialog is `methods=('POST',)`; it carries `submitted = HiddenField()` and overrides `is_submitted()` as `super().is_submitted() and 'submitted' in request.form`, so the first POST renders instead of validating.
 - When a dialog action changes what the list shows, return `jsonify_data(flash=False)` and reload the page so the flashed messages appear after the reload.
 - Never load a whole large table (all categories) to post-process it; use the denormalized data on the row (`detailed_category_chain`, undeferred to avoid O(n) queries) and compute on the server.
@@ -228,7 +232,9 @@ Check the touched Python files and their callers against every item.
 - Deleting something others built on (an editable with revisions) needs full event management, not management of the parent object alone. Ordered children sort with `attrgetter('parent.position', 'position')`.
 - Query the subtype class (`RegistrationFormField`) for subtype-only constraints.
 - New FK to `User`: backref, alphabetized backref list, `merge_users` handling.
-- `#:` column docs; keep the blank line between columns and relationships. `down_revision` points at the current head when the PR is opened and again before merge. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters.
+- `#:` column docs; keep the blank line between columns and relationships. `down_revision` points at the current head when the PR is opened and again before merge. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters and longer ones wrap, no 150-column lines.
+- Renaming a column renames its FK constraint and index too (`ALTER TABLE ... RENAME CONSTRAINT fk_t_old_users TO fk_t_new_users`, `ALTER INDEX ... RENAME TO`) in both directions. `downgrade` recreates every index and check constraint `upgrade` dropped, and uses the project types (`UTCDateTime`, `PyIntEnum`), not `postgresql.TIMESTAMP`.
+- Data migrations fetch the id of an inserted row with `RETURNING id`, never an uncorrelated `(SELECT id ... ORDER BY id DESC LIMIT 1)`; related ids are collected as a tuple and updated in one `WHERE id IN %s`. Boolean SQL reads `NOT is_undone`, not `is_undone = false`, in migrations and `CheckConstraint` alike.
 - `column_property` changes that back an index update the index in `upgrade` and `downgrade`; `indico db_diff` must be empty.
 - Pick NULL or empty string, not both; NULL gets `CheckConstraint("col != ''")`.
 - Association tables declare `ondelete='CASCADE'` on both foreign keys; the closing parenthesis of `op.create_table` sits on the last argument line.
@@ -301,7 +307,12 @@ Check the touched Python files and their callers against every item.
 - Matching an external account: `find_enterprise_email(user)` first, registration email as fallback; lowercase once at the source (the DB already enforces lowercase on Indico emails).
 - Bypass cached tokens (`force=True`) when verifying scopes or permissions.
 - Verify required scopes by exercising every API call (status updates, batch endpoints) on a real tenant; error messages list only the missing scopes and never propose legacy scopes unless already in use.
-- `@memoize_request` over hand-rolled `flask.g` caches; drop the cache if it never hits.
+- `@memoize_request` over hand-rolled `flask.g` caches; drop the cache if it never hits. `@memoize` is process-wide and forever; anything derived from database state uses `@memoize_request`.
+- A helper whose only use of `self` is `self.event` is a plain function, not a mixin. A non-obvious condition (two revisions sharing editor and timestamp meaning one action) gets a comment stating what the combination means.
+- A new action reusing an operation is checked against every assumption inside it (`_ensure_publishable_files` when the action may carry no files); a boolean kwarg computed from a comparison is parenthesized (`required=(action != X)`).
+- Streaming a stored file into a ZIP: `ZipInfo(name, date_time=...)` with explicit `external_attr` (0o644), `file.open()` rather than `get_local_path()` (storage may be S3), and `shutil.copyfileobj(src, zip_handler.open(info, 'w'))`, never `fd.read()`.
+- Optional provider settings read with a default (`settings.get('locked_fields', ())`); set algebra over comprehensions (`locked - required_empty`); exclusions that always apply (`- {'email'}`) are documented where the setting is.
+- A locking rule never overrides an explicit admin action (an admin-desynced field stays desynced) and a field with no provider data is never locked, or signup breaks.
 - Forbid configurations that multiply edge cases (a room with registration enabled attached to several events) instead of supporting them.
 - Features whose result reaches users without an account must deliver it where those users can see it (registration summary via token link).
 
