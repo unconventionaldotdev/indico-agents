@@ -46,6 +46,8 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 
    Levels: **Blocking** (wrong behavior, security, unfiltered surface, unhandled sibling path, architecture upstream will not merge), **Should fix** (works but will be sent back), **Preference** (mentioned, accepted either way), **Reviewer would fix** (changelog, formatting, typos).
 
+   The table holds Blocking and Should fix. Preference and Reviewer would fix go below it as one compact list, one line each, so the findings that decide the review stay visible; a long tail of minor findings dilutes them.
+
 5. **Walk through** one finding at a time, highest level first: code with context, the comment in upstream voice, the fix as a diff (GitHub suggestion block when under three lines), then `AskUserQuestion`: Apply as suggested / Apply differently / Skip. No edits before the developer picks. No batching.
 6. **Apply.** Failing test first when the area has tests (`../write-indico-test/SKILL.md`). Surgical edits. Re-run the narrowest test and the linters. Remove what the fix orphaned.
 7. **Verify as CI would.** After the last applied fix, run what the repository's CI runs and report the result; not green means the review is not finished:
@@ -69,4 +71,8 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 - Never edit before the developer picks an option.
 - Never commit, push or post without an explicit request.
 - Verify every finding against the full file and callers before reporting it.
+- Before calling a branch dead, a check redundant or a base attribute unused, read the helper the code actually calls and the full body of the class it extends; cite that code, never a sibling helper that looks similar.
+- A finding that undoes a rename, a split, a rewrap or an icon choice first checks whether the current shape was asked for in an earlier review round (PR mode: the existing threads; branch and push mode: the developer). If it was, drop the finding.
+- A convention the codebase already follows locally (one icon per concept, locale-neutral badge text, an accepted signature layout) wins over a generic rule in the layer skills; report the generic rule only when the surrounding code does not already settle it.
+- Every bullet of a `### ` group applies to every function of the file it matches; a group walked for one finding is still walked to the end for the same function.
 - Never drop a finding for being small.
