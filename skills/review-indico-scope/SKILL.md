@@ -31,6 +31,8 @@ Run first. A PR that fails here gets no line-by-line review.
 
 - Apply the same fix everywhere the pattern exists, broken or not. A new option on one upload (CSV delimiter) is expected on every upload of that kind; a follow-up PR is acceptable when announced.
 - Close a PR superseded by a newer one instead of leaving both open.
+- An extension point your own earlier PR added and nobody else uses is removed when a new approach makes it unused; upstream keeps no code "unlikely to be ever needed".
+- Removing a round trip with an external service (a callback endpoint) is welcome; say which API contract changes.
 - A new scope, permission or capability lands on every surface at once: declaration tuples (legacy included), README ("optional, only needed for X"), settings check, tests.
 - Features touching users without an account must specify how those users receive the result.
 - Every surface showing filtered data uses the filtered accessor.
