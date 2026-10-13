@@ -32,9 +32,20 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 2. **Read beyond the diff.** For each touched symbol open the full file, its callers, its siblings (the webinar twin of a meeting path, the other RHs in the module, the other templates showing the same number), and the companion repo when core and plugin change together.
 3. **Run the layers** in order scope, backend, frontend, tests. Scope runs once over the whole change. The other three run per changed file, as a loop, never as one pass over the whole diff:
    - Pick the layer by file kind: `.py` gets backend (plus tests when the path is a test module), `.jsx`/`.js`/`.ts`/`.tsx` and `.scss` get frontend, `.html` templates get frontend Jinja, `CHANGES.rst`, docs and `package.json` get scope.
-   - Inside the layer, pick the `## ` sections that match the file (an RH module gets Structure, Naming, Request Handlers And Access, Logging and Security; a model gets Structure, Naming and SQLAlchemy; a `.jsx` gets React plus Verification; a `.scss` gets SCSS) and walk every `### ` group of those sections, bullet by bullet, against each hunk and its surrounding code. Structure and Naming apply to every Python file; React naming, i18n and imports apply to every JS file.
+   - Inside the layer, pick the `## ` sections that match the file (an RH module gets Structure, Naming, Request Handlers And Access, Logging and Security; a model gets Structure, Naming and SQLAlchemy; a `.jsx` gets React plus Verification; a `.scss` gets SCSS) and walk every `### ` group of those sections, bullet by bullet, against each hunk and its surrounding code. Structure and Naming apply to every Python file; any Python file whose hunks build a query (`.query`, `db.session.query`, `select(`) also gets the SQLAlchemy groups Queries, Query style, Eager loading and Soft deletion; React naming, i18n and imports apply to every JS file.
    - Record each finding with file:line, problem, fix, and the bullet it comes from. A bullet that does not apply to the file is skipped silently; a bullet that applies and holds is not reported.
    - After the loop, run the Scenarios groups of the tests skill that match the touched areas as a "what to try manually" list.
+   - **Mechanical pass.** Upstream spends most of its comments on conventions the loop above tends to skip. Grep the diff for each of these and check the matching bullet; a hit is a finding at the "Reviewer would fix" level unless the code already follows the rule:
+     - `jsonify(` next to `.dump(`: `Schema().jsonify(data)` instead.
+     - `methods=(` with `PATCH` or `PUT`: payload-less action endpoints are `POST`; `data-method` in templates matches.
+     - `add_url_rule(`: endpoint names without redundant qualifiers; URL prefix matches the audience.
+     - `.query` or `.filter(` spanning lines: Query style (`(` on its own line or chained calls aligned, one criterion per line, style of the adjacent queries).
+     - `import typing`, `: typing.`: `import typing as t`.
+     - Trailing `# ` comments longer than the code before them, or two consecutive statements each ending in a trailing comment: comment on its own line above.
+     - Removed or added blank lines, rewrapped lines and renamed strings with no behavior change in the same hunk: drive-by, unless the change made the old text false.
+     - `load_only(` followed by attribute reads the dump needs: deferred-column spam.
+     - New `def can_` or `is_` wrappers that only call `can_manage` or `is_admin`: remove, call `can_manage` directly.
+     - Helpers, imports, fixtures and templates whose last caller the diff removed or guarded away: orphans.
    Run `pre-commit run --files <changed>` (core) or `ruff check` + `ruff format --check` (plugins) before presenting.
 4. **Present** a top-level remark when the premise is off, then:
 
