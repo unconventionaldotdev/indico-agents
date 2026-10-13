@@ -104,6 +104,11 @@ Check the touched Python files and their callers against every item.
 - Child objects are loaded through the parent (`Model.query.with_parent(self.event).filter_by(id=...).first_or_404()`), one chained call per line; the model gets a `locator_property` including the parent id (on the concrete subclass when the base lacks it) and the RH declares `normalize_url_spec = {'locators': {lambda self: self.entry}}`.
 - `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending).
 - Keys from client-controlled or externally stored data are read with `.get()` so bad input fails with a validation error, not a `KeyError`.
+- References submitted by managers are validated in the schema with `self.context`: same parent (`Model.query.with_parent(parent).filter_by(id=...).first()`), no self-reference, no cycles (walk the chain with a seen set), no disabled or manager-only targets, and a per-type capability flag on the field implementation (`allow_condition`).
+- Deleting or disabling an item others depend on is refused with `NoReportError.wrap_exc(BadRequest(_('...')))`, including the parent section; no silent cleanup of dependents.
+- Never derive server state from the partial payload the client sends (only changed fields arrive). Merge into the stored data first, then resolve derived state (hidden fields) recursively from the merged data; delete the data of hidden fields and skip their `required`. One shared utility for this check, used by the model and the util; `view_data` is for the frontend only.
+- Field-type-specific behavior lives on the field implementation class (`get_data_for_condition`, `empty_value`), mirrored by the same-named function in the frontend registry; both docstrings state they must match.
+- Celery tasks receive ids and reload the object (it may be gone when the task runs).
 - The response to a mutation carries everything the UI must refresh (`has_pending_invitations`), not only the list.
 - "All" is the absence of the key or `None`, never an empty list.
 - A mode with its own filtering (linkable bookings) gets its own endpoint with bounded ints (`fields.Int(validate=validate.Range(min=0), load_default=0)`), not extra optional args on a paginated one; the server filters out what the user cannot act on, the client renders everything it receives.
@@ -169,6 +174,13 @@ Check the touched Python files and their callers against every item.
 - Search over text columns: prefix match over substring, skip words under 3 chars, GIN/FTS index in the migration, results cached with `memoize_redis(ttl, versioned=True)` and the version bumped on writes.
 - New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).
 - Switching stored text from plain to HTML uses `RenderModeMixin` with a `render_mode` column (legacy rows stay plain text, new rows HTML), never a destructive data migration.
+- Configuration the server must query or validate (references to other rows) lives in real columns with foreign keys, not inside a JSON `data` blob.
+- Mutating a JSON column on a persisted object needs `flag_modified(obj, 'data')`; `db.session.add()` is redundant for objects already in the session. Build children with `parent=section`, not `parent_id=section.id` plus a flush.
+- Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist; `export.yaml` orders the rows topologically so idrefs resolve on import.
+- A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
+- Multi-line queries: `(` on its own line, `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
+- `.one()` on lookups that cannot miss (soft-deleted rows still exist); no defensive `- {None}` or `or {}` without a reproducible case, and a comment when one exists.
+- Set intersection is `a & b`, never `bool(a.intersection(b))`.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
 - Partial-index `WHERE` clauses must be justified.
 - Iterate enum members, never `range` over their values; SQL in triple-quoted strings indented under the call.
@@ -239,5 +251,7 @@ Check the touched Python files and their callers against every item.
 - Defaults only where they are what the user would choose.
 - Keep source formats when converting data (PNG stays PNG).
 - Every entry point building the same payload gets the behavior (user form, manager on-behalf, bulk).
+- A new relation between items raises every interaction: paid items (lock the condition client-side, rely on the server price check), retention periods (a dependency cannot be purged before its dependents), cloning, export/import, manager-only sections, disabled and deleted items, default values. Answer each before asking for review.
+- Terminology is one word per concept across labels, placeholders and errors ("Indefinite", not "Permanent" in one place).
 - A locked value is written from its source (`value = invitation.email`), not by marking the field read-only and leaving it blank.
 - Labels name the behavior plainly ("Lock email address", "cannot be changed during registration"); verbs are consistent across UI, flash messages and changelog ("re-send").
