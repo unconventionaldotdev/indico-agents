@@ -143,6 +143,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - `html_to_markdown(text, inline_links=False).strip()` for HTML to plain text, not `strip_tags`.
 - Subjects and other non-HTML strings get no `strip_tags`; escape where they are rendered.
 - No parse-and-rebuild round trip that returns the input unchanged (`urlunsplit(urlsplit(url))`); validate with `urlsplit` and keep using the original string.
+- Text composed for generated documents (badges, tickets, PDFs) stays locale-neutral: values joined with punctuation and separators, never `_()`, because the printing user's locale is not the attendee's.
 
 ### Dates, times and units
 
@@ -193,6 +194,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - No blank line after `class X:` or after a `def` line; no blank lines between consecutive statements of a short method body.
 - `# noqa: CODE` trails the offending line; a standalone `# flake8: noqa` disables every rule for the whole file.
 - Core has no `# pylint:` directives: the linter is ruff, suppressions are `# noqa: CODE` on the offending line.
+- A signature with one argument per line and a trailing comma is accepted when the one-line form exceeds 120 columns with its type hints; not a formatting defect.
 
 ### Module layout
 
@@ -240,6 +242,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A column or field covering several things (terms of service and privacy policy) is named after the generic concept (`accepted_terms_dt`), never after one of them (`accepted_tos_dt`); its `#:` doc comment lists what it covers.
 - One concept keeps one field name across the signup schema, the WTForm and the client payload (`accept_terms`), no per-surface variants (`accept_registration_terms`).
 - Placeholders in translatable strings are plain words (`{max}`).
+- A group or category key added next to an existing one shares its noun and scheme (`registrant` / `registrant_custom`), not a different noun (`regform_fields`).
 
 ### Comments
 
@@ -445,6 +448,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - `event.updated` is not reliable for date changes (auto-extension by moving a contribution bypasses it); date-dependent sync handles `event.times_changed`, or a comment says why it is unnecessary.
 - A handler on a per-registration signal checks that registration's own form flag, not an event-wide query.
 - Plugins extend data returned by a hook (`qr_data.update(...)` with each handler's dict); they never replace it.
+- A placeholder context whose signal handler declares kwargs no placeholder reads gives them defaults in the handler; call sites call `get_sorted_placeholders(context)` and `serialize()` without dummy `None` arguments.
 
 ### Plugin extension points
 
@@ -452,6 +456,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - Abstract class attributes on a base class default to `None`, never to an example value (`regex = None`, not `regex = r'...'`).
 - The payload built from registered handlers is a dict keyed by name (`{x.name: x.regex for x in handlers.values()}`), and the key is always present (empty dict when nothing is registered), never added conditionally.
 - A getter built on `named_objects_from_signal` gets an `@signals.core.app_created.connect` handler (`_check_x_handlers`) that calls it once, so duplicate names raise at startup instead of on the first request.
+- When plugin data moves onto an existing signal, trace every early return between the entry point and the `send()` call; a no-op update path that skips the signal silently drops the plugin data.
 
 ## Forms (WTForms)
 

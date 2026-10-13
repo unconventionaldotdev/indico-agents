@@ -93,6 +93,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - After renaming a key or enum member (`contribution` to `contrib`), grep every TypeScript consumer: the compiler does not catch string-keyed lookups.
 - SUI states are props (`primary={selected}`, `disabled={disabled}`), never class name strings assembled by hand; primary actions use `primary`, not `color="blue"`.
 - Boolean DOM properties receive booleans (`el.hidden = !!numMatches`), never a count.
+- `propTypes` keys follow the order of the props in the component signature, not alphabetical order.
+- A plugin component rendered inside a form receives the minimal submission state it needs (`disabled`), never the whole `formProps` object; every surface rendering the entry point passes the same prop set.
 
 ### Final-form structure
 
@@ -267,6 +269,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Rich text produced by the editor is rendered inside an `editor-output` container, in React (`dangerouslySetInnerHTML`) and Jinja (`sanitize_html` output) alike.
 - Generated color palettes are deterministic per id, vary hue first and saturation/brightness after, and derive the text color from the background by a contrast rule.
 - Controls with no alternative activation on touch devices stay visible.
+- Icons follow the concept, not the glyph: reuse the icon the codebase already uses for that concept (`icon-quill` for registration) even when a more literal glyph exists in the font.
 
 ### Dates, prices and locales
 
@@ -395,6 +398,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Admin-only code goes in its own bundle (`module.json` `partials: {admin: './admin.js'}`, page bundles `module_x.admin.js`) so regular pages do not load it.
 - Empty `index.js` files are deleted.
 - Build-time scripts (`preval`) follow the runtime lint style and skip unexpected input (an unofficial locale directory) with `try/catch` plus `continue` and a comment.
+- A new `client/js` directory that other bundles import by module path gets a path alias in `jsconfig.json` in the same change, or is imported relatively.
 
 ### Custom elements
 
@@ -537,6 +541,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A disabled button explains why in its own `title`, not through a separate info icon.
 - `data-no-qtip` on `title` attributes that must not open a qtip.
 - A cell with an icon next to a name gets `white-space: nowrap`.
+- A management action valid only in some object states keeps its button rendered and disabled in the other states (`disabled` attribute with a tooltip), instead of hiding the whole section.
 
 ### URLs and data
 
