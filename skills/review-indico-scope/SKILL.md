@@ -10,7 +10,8 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Appetite And Placement
 
 - Does upstream want it? Niche provider settings belong on the tenant or in a custom plugin, not in a general-purpose plugin.
-- Limits, thresholds and workarounds need a real example and a frequency.
+- Limits, thresholds and workarounds need a real example and a frequency; restrictions without a reason (a fixed delimiter set) are dropped.
+- Code that is hard to review or maintain client-side (format sniffing, parsers) stays on the server even when a request is needed.
 - Per-event behavior is an event or room setting; global plugin settings need a reason.
 - Core vs plugin: generic in core, service-specific in the plugin; a core hook needs a core consumer.
 - Infrastructure-provided secrets stay optional; the admin UI remains the default.
@@ -43,7 +44,7 @@ Run first. A PR that fails here gets no line-by-line review.
 
 ## Changelog And Versioning
 
-- Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped; `:data:` role for settings.
+- Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role for settings.
 - One entry per feature; a missing feature is an Improvement, not a Bugfix; wording is short and user-facing. Entry goes under the release being developed, not an older one.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them.
 - Plugins: README changelog bullet under the unreleased version (no new heading while the previous one is unreleased). Version tracks the first two Indico parts; new plugins start at `3.3-dev` with `### 3.3` / "Initial release". `-dev` may stay forever without PyPI releases. `dependencies = ['indico>=3.3.X.dev0']` when built against master.

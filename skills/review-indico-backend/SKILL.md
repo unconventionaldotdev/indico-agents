@@ -22,7 +22,16 @@ Check the touched Python files and their callers against every item.
 - Module constants right after imports (or on the API client class), never inside the plugin class; single-use values inlined with a short comment.
 - `cached_classproperty` when class-level access is enough.
 - Plain defaults in the signature; `None` plus `if x is None` only for mutable defaults and translated strings.
-- New boolean parameters are keyword-only (`*, flag=True`).
+- New optional parameters are keyword-only (`*, flag=True`); check no caller passes the neighbours positionally and make those keyword-only too.
+- Argument order: the object acted on first (`add_users_to_group(group, users)`), then the rest.
+- Helpers do their own difference (`users - group.members`) so callers cannot misuse them; the name must not promise more than the body does.
+- No guard for values no caller passes (`if not fmt: return None` with no falsy caller).
+- Parenthesize `or` chains inside a walrus.
+- Reuse the local already computed (`user.email`, not `session.user.email` after `user = session.user`).
+- Previews use a lightweight mock object (`MockX(regform, first_name, last_name)`), not an unsaved model plus `self.commit = False`.
+- Parsing (CSV sniffing, delimiters) stays server-side; `csv.Sniffer()` over the first lines, empty input returns `[]`, failure raises `UserValueError`.
+- Do not store uploads that are consumed immediately; process the stream and return the data instead of `UploadFileMixin` plus state kept in `validate_file`.
+- Exercise every caller of a changed shared util (exports from other modules, objects without an ACL) before merging.
 - One query for the set, then membership in Python; never a query per candidate inside a loop.
 - Do not catch unexpected external errors just to log them; an uncaught exception is more informative and crashes nothing. Catch only the client's exception class (`HTTPError`, `StorageError`), never bare `Exception`; wrap only the call that can raise, not the surrounding block.
 - `assert` for states that must never happen (template missing `<body>`), not a warning log.
@@ -70,7 +79,9 @@ Check the touched Python files and their callers against every item.
 - Every endpoint that lists, counts, exports or acts on the same objects applies the same filter and gate; feature-gated endpoints stay closed when the gate is off.
 - Narrow permissions grant nothing beyond their purpose: logs, exports, configuration, legacy APIs stay with full management.
 - New helper endpoints start admin-only; loosen later when another consumer appears.
-- Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')`; always call the base `_process_args` even when it is a no-op.
+- Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')` with the kwarg named explicitly (never `**kwargs`), also instead of `Model.get(request.view_args[...])`; always call the base `_process_args` even when it is a no-op.
+- Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`.
+- RH docstrings describe what the handler does now, not the earlier design.
 - `@use_args(Schema)` with a positional `data` when the dict is passed on; `@use_kwargs` only when fields are consumed individually.
 - Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta`.
 - Signals receive the parsed `data`, not `request.json`; an empty payload after plugins ran is a no-op, not `BadRequest`.
@@ -106,6 +117,7 @@ Check the touched Python files and their callers against every item.
 - `ValidationError(_('msg'), 'field')`; named placeholders in multi-value strings.
 - `data['x']` for fields with `load_default`.
 - Free-form metadata is `fields.Dict(keys=fields.Str())`; `null` rejected, empty is `{}`.
+- `load_default=lambda: []` for mutable defaults; `@pre_load` hooks copy `data` before popping keys.
 - Backend regex validation mirrors the frontend one.
 
 ## SQLAlchemy And Migrations
@@ -138,6 +150,7 @@ Check the touched Python files and their callers against every item.
 - Expected external rejections handled, not logged as warnings each run.
 - Errors say how to fix; system-level errors (admin disabled a feature) need no i18n.
 - Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating).
+- Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text.
 - External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
 - End-user warnings are one concrete sentence; no double spaces or typos in user strings.
 - Log arguments carry only what helps (no event id when it cannot be acted on).

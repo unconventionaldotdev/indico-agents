@@ -34,6 +34,10 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Identifier inputs reject spaces and uppercase; help text states the real uniqueness scope.
 - Dialogs autofocus the first input; related short fields share a row.
 - Mount React from a custom element (`customElements.define('ind-...')`) with attributes, not `window.setupX()` plus inline script.
+- No new features in the `WTF*` legacy wrappers; new behavior is React-based.
+- Field values stay light (identifiers only); extra data is resolved server-side, not through callbacks that leak field internals.
+- New components are generic (a file drop that hands the file to a callback), not bound to one workflow.
+- Async requests behind a button (`preview`) go through `try/catch` with `handleAxiosError`; a failed submit closes overlays that would hide the error.
 - Labels are plain words; messages one concrete sentence. `PluralTranslate` for anything with a count.
 - No labels on dropzones; fix error display another way.
 - Test long content, truncation, empty states.
