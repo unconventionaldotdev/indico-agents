@@ -38,6 +38,8 @@ Check every touched `*_test.py` and `fixtures.py`.
 
 - `*_test.py`; plugins keep tests in `tests/`, fixtures in the package.
 - Continuation lines aligned with the opening parenthesis; no blank line after `class X:`; no banner comments.
+- Plain functions, no test classes (a class per module hints the module is too big).
+- Every new validation rule ships with a test.
 - One-line docstrings only when the name cannot carry the behavior.
 - `parametrize` over near-duplicate tests and over RH classes; `list(SomeEnum)` for all states.
 

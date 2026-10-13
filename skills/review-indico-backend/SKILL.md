@@ -19,17 +19,31 @@ Check the touched Python files and their callers against every item.
 - One definition point for shared infrastructure (one `cache` classproperty, one permission tuple constant, one `is_gravatar` enum property instead of repeated membership checks).
 - Several handlers differing only in a parameter collapse into one with `any(...)`.
 - Extend the existing mechanism before adding one (`PERMISSION` accepting a tuple instead of new mixins); `isinstance(x, (tuple, set, list))` for such checks.
-- Module constants right after imports; single-use values inlined with a short comment.
+- Module constants right after imports (or on the API client class), never inside the plugin class; single-use values inlined with a short comment.
 - `cached_classproperty` when class-level access is enough.
 - Plain defaults in the signature; `None` plus `if x is None` only for mutable defaults and translated strings.
 - New boolean parameters are keyword-only (`*, flag=True`).
 - One query for the set, then membership in Python; never a query per candidate inside a loop.
-- Do not catch unexpected external errors just to log them; an uncaught exception is more informative and crashes nothing.
+- Do not catch unexpected external errors just to log them; an uncaught exception is more informative and crashes nothing. Catch only the client's exception class (`HTTPError`, `StorageError`), never bare `Exception`; wrap only the call that can raise, not the surrounding block.
+- `assert` for states that must never happen (template missing `<body>`), not a warning log.
+- `match` with class and sequence patterns for type dispatch over `isinstance` chains.
+- Walrus in guards: `if not (x := get()): return`; `if missing := compute(): raise`.
+- Boolean names for booleans (`got_access_token`, not `access_token` when only truthiness matters).
+- Declare variables where they are used, not at the top of the function.
+- Return richer data through a kwarg (`full=True`) instead of reading a side effect (a cache) back.
+- Derive capability from the data (stored attachments count equals attachments count) rather than from a config flag; do not block actions on a flag that only gates creation when the data already exists.
+- Display logic belongs in the template, not in the renderer or RH.
 - Service code tolerates no request context (`session.user if session else None`).
 - A changed signature lands on every override and subclass.
 - Prefer an attribute or keyword with default over a new positional argument when plugins subclass the class.
-- Index keys the code itself wrote (`data['body']`); `.get('x', [])` only for genuinely optional keys, never `.get('x') or []`.
-- Walrus in comprehensions to avoid double getter calls.
+- Index keys the code itself wrote (`data['body']`, `email['cc']`); `.get('x', [])` only for genuinely optional keys, never `.get('x') or []`.
+- Walrus in comprehensions and guards to avoid repeated getter calls (`if flag and (items := data['items']):`).
+- Method chains break with the `.` at the start of the continuation line.
+- `Model.query` over `db.session.query(Model)`; `query.has_rows()` over `count().scalar()`.
+- `html_to_markdown(text, inline_links=False).strip()` for HTML to plain text, not `strip_tags`.
+- Inserted content goes inside `<body>`, with a separator (`<hr>`, `-------------`) between preface and original.
+- Stored records keep what is needed to recover later (filename, content type) and nothing more; key names follow existing Indico names (`storage_backend`, `storage_file_id`).
+- Deduplicate within a request through `flask.g`; unique file names use a uuid, not a content hash (same content saved twice must not fail).
 - 120-character lines; no line breaks that fit on one line; long boolean expressions parenthesized, one operand per line, operator first.
 - Do not re-implement framework behavior: `IndicoFlaskParser` already strips surrounding whitespace from request data.
 
@@ -55,6 +69,11 @@ Check the touched Python files and their callers against every item.
 - Shared `PERMISSION` tuples live on an intermediate base class; subclasses never repeat an inherited `PERMISSION`.
 - Every endpoint that lists, counts, exports or acts on the same objects applies the same filter and gate; feature-gated endpoints stay closed when the gate is off.
 - Narrow permissions grant nothing beyond their purpose: logs, exports, configuration, legacy APIs stay with full management.
+- New helper endpoints start admin-only; loosen later when another consumer appears.
+- Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')`; always call the base `_process_args` even when it is a no-op.
+- `@use_args(Schema)` with a positional `data` when the dict is passed on; `@use_kwargs` only when fields are consumed individually.
+- Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta`.
+- Signals receive the parsed `data`, not `request.json`; an empty payload after plugins ran is a no-op, not `BadRequest`.
 - Links embedding a capability (ticket link with registration token) are hidden from roles without it.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
 - Schemas limit what is accepted and returned.
@@ -71,6 +90,8 @@ Check the touched Python files and their callers against every item.
 ## Forms (WTForms)
 
 - Dependent fields: `HiddenUnless('toggle', preserve_data=True)` plus `DataRequired` when empty makes no sense.
+- No `Optional()` when it is the only validator.
+- Uniqueness checks scope to enabled items and run again on re-enable; case-insensitive via `db.func.lower`.
 - Per-event behavior is an event or room field, not a global plugin setting.
 - Multi-value errors name the offending items.
 - `markupsafe.escape` on user strings inside `ValidationError`.
@@ -84,6 +105,7 @@ Check the touched Python files and their callers against every item.
 - `@validates_schema(skip_on_field_errors=True)`, written explicitly even though default.
 - `ValidationError(_('msg'), 'field')`; named placeholders in multi-value strings.
 - `data['x']` for fields with `load_default`.
+- Free-form metadata is `fields.Dict(keys=fields.Str())`; `null` rejected, empty is `{}`.
 - Backend regex validation mirrors the frontend one.
 
 ## SQLAlchemy And Migrations
@@ -107,6 +129,7 @@ Check the touched Python files and their callers against every item.
 - No plugin imports while loading config (mappers not ready); defer to `IndicoPlugin.init()`, validate in `IndicoConfig.validate`.
 - Config-provided credentials disable and mask the matching admin UI fields; all credentials of one integration configurable the same way; file-based secrets optional.
 - Settings docs go in the matching section ("System", not "Development").
+- Log-type or derived data gets its own storage setting (default `None`), never `ATTACHMENT_STORAGE`, which holds long-term user content.
 
 ## Logging, Flashing, Errors
 
@@ -115,7 +138,9 @@ Check the touched Python files and their callers against every item.
 - Expected external rejections handled, not logged as warnings each run.
 - Errors say how to fix; system-level errors (admin disabled a feature) need no i18n.
 - Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating).
-- End-user warnings are one concrete sentence.
+- External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
+- End-user warnings are one concrete sentence; no double spaces or typos in user strings.
+- Log arguments carry only what helps (no event id when it cannot be acted on).
 
 ## External Services And Performance
 
@@ -124,6 +149,15 @@ Check the touched Python files and their callers against every item.
 - No O(n) external sweep per request: daily Celery task, scoped cache with TTL above the interval, per-item fallback.
 - Common case first.
 - Re-fetch after a PATCH when the provider drops values silently.
+- Sync features handle the full lifecycle: created, deleted, state changed (including reset to pending), parent deleted, room created, option enabled on an existing room (sync existing items then).
+- Bulk changes within a request: queue in `flask.g`, flush once in `signals.core.after_process`, use the provider's batch endpoints.
+- Before pushing a full set, fetch the provider's current list and send only the difference.
+- Matching an external account: `find_enterprise_email(user)` first, registration email as fallback; lowercase once at the source (the DB already enforces lowercase on Indico emails).
+- Bypass cached tokens (`force=True`) when verifying scopes or permissions.
+- Verify required scopes by exercising every API call (status updates, batch endpoints) on a real tenant; error messages list only the missing scopes and never propose legacy scopes unless already in use.
+- `@memoize_request` over hand-rolled `flask.g` caches; drop the cache if it never hits.
+- Forbid configurations that multiply edge cases (a room with registration enabled attached to several events) instead of supporting them.
+- Features whose result reaches users without an account must deliver it where those users can see it (registration summary via token link).
 
 ## Security
 
@@ -131,11 +165,14 @@ Check the touched Python files and their callers against every item.
 - Plugin endpoints scoped to event, category or regform.
 - Provider defaults verified (`approval_type`).
 - Standard primitives for hardening: `hmac.compare_digest`, `secrets`; no signatures in logs.
+- Scanner findings need a proof of concept or a reason; cheap hardening (`parseInt` on an id from the URL) is still accepted.
 - Signed file links via `File.signed_download_url` and `RHFileDownload`; check `UploadFileMixin` before writing an upload handler.
 
 ## Behavior Changes
 
 - Changes to existing workflows are opt-in per form, off by default, or narrowed to the unambiguous case.
+- Features needing extra provider permissions get two switches: plugin-level `allow_x` (validated against the granted scopes at save time) and per-room `x` shown only when allowed; both default off. Related provider recommendations go in the description, not enforced. Link to the README section instead of listing scopes in the description.
+- Settings dialogs with several topics use `_fieldsets` on the form and `jsonify_form(form, fieldsets=...)`.
 - Walk state machines with payment (approve, pay, change, approve again) before claiming correctness.
 - Warn users before surprising consequences.
 - Defaults only where they are what the user would choose.
