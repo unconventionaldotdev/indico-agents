@@ -36,6 +36,10 @@ Run first. A PR that fails here gets no line-by-line review.
 - Prefer an explicit control per intent (one trigger per end of a range) over inferred intent; when reviewers call a behavior "too much magic", go back to the explicit model instead of adding hints to explain it.
 - A new third-party integration ships behind a global `indico.conf` flag (`ENABLE_X`, default off); when off, every related surface is hidden and stored configuration is left untouched. An option the current user cannot make work (it depends on configuration one level up) is not shown at all. An integration that only partly covers a feature states the limitation in the setting description.
 - Resource-heavy per-user features (a full data export) ship with an instance-level cap (`MAX_DATA_EXPORT_SIZE`) and an option to skip the heavy part (`include_files`), both documented with defaults.
+- Agree on the control semantics before building. A field that only accepts the listed options is a (searchable) select; a combobox is a free-text input with suggestions. A reimplementation keeps the restriction semantics of the control it replaces, and a generic element that fell out of the work is kept only when it has a plausible consumer.
+- A flow that blocks users until they act (forced acceptance of updated terms) exempts admins and shows them a persistent top banner instead, following the existing global announcement and impersonation banners.
+- Do not generalize for hypothetical reuse. A component or endpoint built for one consumer takes that consumer's identifier (the event id) rather than a free-form parameter (a URL) plus validation; props and kwargs no call site sets to a non-default value are dropped and added back with the consumer that needs them.
+- A workflow improvement for maintainers (a converter script for a generated asset block, better region markers) that is not needed to merge the feature goes to a follow-up PR; the feature lands with the minimal workaround.
 
 ## Consistency
 
@@ -56,6 +60,10 @@ Run first. A PR that fails here gets no line-by-line review.
 - A reimplemented widget keeps every affordance of the one it replaces (clear-search button, action button) unless the removal is announced. A replacement component never merges under a numbered alias (`DateRangePicker2`): consumers migrate, the old component, its stylesheet and library imports are deleted and the suffix dropped in the same PR.
 - A second delivery format for the same artifact (a wallet ticket next to the PDF ticket) reuses the existing payload builders and subclasses the existing RH so check-in and access rules stay identical.
 - Inherited category configuration follows the three-state model used for protection (`disabled` / `enabled` / `inheriting`); no boolean plus "not set" inside a JSON blob.
+- A fix several custom elements need (surviving a temporary disconnect when the DOM moves them) lands as a shared base class in its own PR; the feature PR then adopts it instead of patching one element.
+- A CLI command that replaces a script or an older command reproduces every step of what it replaces (cleanup of empty output files, exit codes, per-plugin coverage); diff the old script before claiming parity. An operation offered for core (`push`, `pull`) is offered for plugins too unless the description says why not.
+- New CLI subcommands mirror the argument shape of existing tooling (`indico`, `plugin <dir>`, `all-plugins <dir>` as in `build-assets.py`); a subcommand named in the plural must accept several targets, otherwise it is singular.
+- A new attribute of an existing concept (weekdays on a weekly repetition) reaches every consumer of that concept before review: availability search, suggestions, conflict checks, the edit flow and its split logic, email texts and edit-log messages, the public API's short names, and rows created before the attribute existed.
 
 ## PR Description
 
@@ -68,6 +76,9 @@ Run first. A PR that fails here gets no line-by-line review.
 - Enable "allow edits by maintainers".
 - Known limitations are stated with their mitigation ("a catastrophic regex hangs the parser; the surface is admin-only") instead of being discovered in review.
 - State which call sites the PR migrates and which keep the old implementation. New third-party dependencies are named with what each is for. Commits that add plugin extension points on the side (a template hook, exported components, a block around a form) are listed so each can be judged separately.
+- An accessibility PR names the concrete barriers it removes (options not announced, effect of typing unclear), not "accessibility issues"; problems found on the way that are not a11y (validation gaps) are fixed when asked or named as out of scope.
+- A PR adding API endpoints lists each URL with its methods and calls out cross-cutting changes made on the side (CORS enabled for a set of endpoints, a new library) so each can be judged separately.
+- A deliberate omission (no checkbox, behavior applied implicitly) is stated with its reason instead of being discovered in review.
 
 ## Changelog And Versioning
 
@@ -82,6 +93,9 @@ Run first. A PR that fails here gets no line-by-line review.
 - "Major Features" is filled when preparing the release; a new feature goes under Improvements and is promoted later. Accessibility work goes under `Accessibility`, worded by the user-visible result; new custom elements get a separate Internal Changes entry naming each (``<ind-with-tooltip>``).
 - A feature entry names what users can now do ("take a picture with the webcam, crop and rotate it"), not the artifact ("Add support for the X field"); a UI change leads with the benefit and the condition that triggers it.
 - Role syntax is checked character by character (`:user:` with both colons). The two blank lines closing a version block stay. After a rebase the changelog diff adds only this PR's entries.
+- When the version being developed has no `Accessibility` section yet, it is created between Bugfixes and Internal Changes.
+- CLI commands in an entry are double-backtick literals (``indico i18n``) and the sentence says what the command now supports; never "Improve X cli and add new cli".
+- A PR shipping a feature plus an internal building block it introduces (a design system, a shared stylesheet layer) gets two entries: the feature under Improvements, the building block under Internal Changes. Split the PR only when the two already live in separate commits.
 
 ## Packaging And Repo Boilerplate
 
@@ -94,6 +108,8 @@ Run first. A PR that fails here gets no line-by-line review.
 - Tooling: `make` alone shows help; Makefiles use 8-wide tabs in `.editorconfig`; CI keeps its own commands when it needs different flags.
 - Adding one npm package must not rewrite `package-lock.json`: `npm ci` on a clean tree, then `npm i <pkg>`; a lockfile diff that downgrades unrelated packages is regenerated.
 - New Python dependencies go in `requirements.in`; `requirements.txt` is regenerated with `pip-compile` (alphabetical, `# via` comments) pinning the latest release, never hand-edited.
+- When a PR replaces a command that CI invokes, every workflow step moves to the new invocation, including the steps the author did not touch (JS and React extraction next to Python). Steps exist to catch failures, so the variant that can fail (`--react`) is the one CI runs. `::add-matcher::` / `::remove-matcher` blocks around a step stay when the command changes; they produce the PR annotations.
+- Scripts that regenerate or normalize project assets (icon font CSS) live in `bin/maintenance/`, never behind an external pastebin or codepen link. Machine-maintained regions in source files are delimited by markers that say so (`/* BEGIN GENERATED ... */`, `/* END GENERATED ... */`).
 
 ## Docs
 
@@ -101,6 +117,10 @@ Run first. A PR that fails here gets no line-by-line review.
 - Settings documented in the matching section.
 - A new custom element ships a `<name>.README.md` next to it with the expected markup and known pitfalls. Spell-check READMEs and inline docs before review.
 - Every `.. data::` setting entry ends with a `Default:` line showing the literal default after a blank line; units take a space (`10 GB`). A setting storing a URL to an externally fetched asset documents that it must be publicly reachable and whether changes affect existing objects.
+- After editing an `.rst` sentence, rejoin the wrapped lines so no short leftover line remains ("Run the command ``x`` and:" on one line).
+- README and other prose files carry no license header; the header-update tool does not track them. Project documentation is Markdown (`README.md`), never `.txt`.
+- Code samples in READMEs follow the project style (2-space SCSS indentation, single quotes in `@use` paths); directive and keyword names in prose are backticked (`@extend`, `@media`). The product is "Indico", not "the Indico app".
+- A README introducing a new pattern documents its known caveats and the workaround (placeholder `@extend` does not apply inside `@media`; keep a mixin for those cases).
 
 ## Commits And Branch Hygiene
 
@@ -114,6 +134,9 @@ Run first. A PR that fails here gets no line-by-line review.
 - Values lowered for manual testing (a page size of `N`) are reverted before review; build a dataset large enough to exercise the real default.
 - No trailing whitespace in any file type (`.rst`, `.html`, `.scss`); the linters only cover Python and JS.
 - A PR closed by an accidental empty push is recovered with `git push --force origin <sha>:<branch>` and the reopen button, then rebased.
+- Developer conveniences added while building (a `?preview` query arg that bypasses date checks) are removed before review; anything not used by the feature is dropped.
+- Never run a formatter over a whole file: format only the selection you changed, disable format-on-save, and stage with `git add -p`; a diff that rewraps unrelated code is reverted before review.
+- Never regenerate `.pot` or `.po` catalogs in a PR; string extraction and the translation upload run upstream separately, and the line-number churn only creates conflicts.
 
 ## Conversation
 
@@ -133,3 +156,5 @@ Run first. A PR that fails here gets no line-by-line review.
 - Multi-state interaction logic (selection state x trigger used x click target) is agreed as an outcome table in the thread before coding, every row readable on its own, and implemented as pure functions so a corrected row is a one-line change.
 - A bug found with local modifications comes with the exact patch used to reproduce it; a reviewer who wires the new component into another module to test it pushes that commit instead of keeping a stash. Before becoming unavailable mid-review, push the current state so the reviewer can continue from it.
 - When a reviewer asks whether an update can be skipped, point at the flag that already gates it (`update=False` default) rather than defending the design.
+- Contested widget behavior (where the search box lives, how clearing works) is prototyped in a standalone sandbox linked from the thread and agreed there before it is implemented in the PR.
+- Debug leftovers in review-stage commits (`console.log`, half-done `TODO fix properly and remove` adapters) are removed by the next push; reviewers delete them silently and the PR is judged on the cleaned state.

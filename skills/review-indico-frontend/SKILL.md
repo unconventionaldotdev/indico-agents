@@ -149,6 +149,59 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Pagination controls hide what cannot change the view: no page-size picker when the smallest size fits every row, and only sizes below the row count plus "all". An empty list keeps the surrounding controls (search box, count) and shows a message where the rows would be; long names stay on one line with an ellipsis. Tabs and groups keep the order managers configured. Layout magic numbers get a comment with the reason; a value built in two statements becomes one `const` expression.
 - Inputs for code-like values (regexes, URL patterns) use a monospace font. Legacy JS keeps its `$('html').data('static-site')` branch around anything that opens a dialog. A comment describing a group of declarations moves with them.
 - Build-time scripts (`preval`) follow the runtime lint style and skip unexpected input (an unofficial locale directory) with `try/catch` plus `continue` and a comment.
+- When a library input is swapped for a custom one, every prop the old call received (`disabled`, `required`, `onFocus`, `onBlur`, placeholder) is forwarded or deliberately dropped; check the field locked after payment and the form while submitting.
+- Custom elements generate ids the same way: `static lastId` on the class and `<tag>-<n>` (`date-picker-3`), no ad hoc module counter and no `x-` prefix.
+- A text input that drives a custom listbox sets `autoComplete="off"` so the browser autofill popup does not cover the options.
+- A clear button on a select-like control is hidden when the field is `required`, disabled together with the field, and clearing leaves the list closed (clearing means empty, not change).
+- Autocomplete never rewrites what the user typed (no case change on match); matching is case-insensitive without replacing the input.
+- The empty value of a field is its canonical empty shape (`{}`), never a sentinel key (`{'': -1}`); for a non-required field the empty value gets submitted.
+- Option values are the identifiers; a selection is never resolved by matching captions, which are not unique (an option removed and re-added with the same caption).
+- A non-required field still validates what was typed; input matching no option is an error, not silently treated as empty.
+- Dependent controls (slot count after a choice) reset to a valid value when the parent choice changes and disappear when it is cleared; the displayed value always equals the submitted one.
+- Text only exposed through constraint validation or assistive tech (`internals.setValidity(..., msg)`, visually hidden labels, filter labels inside a `<dialog>`) goes through `Translate` like any other string.
+- Boolean DOM properties receive booleans (`el.hidden = !!numMatches`), never a count.
+- Handler locals never shadow a name of the enclosing component (`selected` next to `selectedChoice`); the lint warning is fixed by renaming.
+- A callback with a single return is an expression-bodied arrow; a two-branch return is a ternary, not `if`/`return`.
+- After a widget changes semantics mid-review (combobox to select), validation branches for input it can no longer produce are removed.
+- Links use `indico-url:` builders (`tosURL()`), never hardcoded hrefs (`/tos`); every linked route is checked to exist.
+- A link inside a translated sentence is a `<Param name="x" wrapper={<a href={xURL()} />}>` in one `<Translate>`; each variant of the sentence is its own full `<Translate>` block, not conditional fragments joined with `and`.
+- Links inside a checkbox label call `evt.stopPropagation()` so following the link does not toggle the checkbox.
+- Rich text produced by the editor (`dangerouslySetInnerHTML`, `sanitize_html` output) is rendered inside an `editor-output` container, in React and Jinja alike.
+- A page needing a non-standard form layout is built in React; a WTForms page keeps the standard `i-form` layout and never ships per-page CSS overriding `.i-form` or `.form-field`.
+- Custom element attributes carry one value each (`google-calendar-params`, `outlook-calendar-params`); never a delimited string the component splits, which breaks when a value contains the delimiter.
+- No `export default` for a component or element class used only inside its own module.
+- File order in a custom element module: component, its `propTypes` right after it, `customElements.define(...)` last.
+- `FinalForm` takes the render callable as children, never through the `render` prop.
+- A form inside a popup is still a final-form: `onSubmit` posts the form `data` object as is and returns `handleSubmitError(e)` on failure; no status-code branching, no `handleAxiosError`, no local `error` state. The field is a `FinalInput` whose `name` equals the webargs kwarg (`server_url`) so the server error lands on the field; the form subscribes to `pristine`, `submitting`, `submitError`, `submitFailed`, `dirtySinceLastSubmit`, shows `submitError` only while `!dirtySinceLastSubmit`, and the submit button is `disabled={pristine || submitting || (submitFailed && !dirtySinceLastSubmit)}` with `loading={submitting}`.
+- `window.open` after an awaited request trips popup blockers; open on the user's own click, or show a success message with a button that opens the window. Test in Firefox and Safari, not only Chrome.
+- A popup that opens a nested popup becomes controlled (`open={isOpen}`) and its `onClose` ignores closes while the child popup is open (`onClose={() => !isChildOpen && setIsOpen(false)}`); the child reports its state through `onOpen` / `onClose`.
+- Query parameters of an `indico-url:` builder are passed as an object (`qrCodeImageURL({url, box_size})`), never concatenated with `?` and `encodeURIComponent`.
+- Acronyms stay uppercase in component names (`QRDisplay`, `ShareURL`); a component name names the concept, never `XAndY`.
+- A prop that every call site leaves at its default is removed; add it with the consumer that needs it.
+- No `?.` on a value an earlier line already dereferenced unconditionally; either guard the first access or drop the operator.
+- No `eslint-disable-next-line no-undef` for a global a module provides; import it (`import _ from 'lodash'`).
+- Page-level widget scripts tolerate the widget markup being absent or reduced (a disabled variant on management pages); null-check the root lookup or return early.
+- Note comments use `XXX:` for general notes and `TODO:` for actual work items, never `NB:`; long comments wrap at the line length, in SCSS too.
+- No translucent control overlaid on an image users may screenshot or photograph; place the action next to it. A trigger whose meaning changes after a click (generate, then download) changes its icon and `title` accordingly.
+- When a change removes a disabled state that displayed an effective value (the profile timezone in a greyed select), the value is shown another way (a hint line, a marked option).
+- The visual required marker and the actual validation are two props (`showAsRequired`, `isRequired`); a management override relaxes the validator and leaves the asterisk. Custom form items (`customFormItem`) receive `showAsRequired` like the generic path; a checkbox marks it with the `required` class on `fieldProps.className`.
+- A custom `validate` honors `isRequired`: the empty-value message is returned only when required (`isRequired ? Translate.string('...') : undefined`); format checks on a filled value stay unconditional.
+- Locals named by what they control (`showAsRequired`, `inputRequired`), not by the mode they were introduced for (`managementRequired`).
+- Weekday and month names are never hardcoded English strings; labels come from moment locale data (`moment.weekdays(true)`, `moment().isoWeekday(wd).format('ddd')`) and the stored key is computed locale-independently (`.locale('en').format('ddd').toLowerCase()`).
+- Words between placeholders ("and") live in the translatable string, never inside a `<Param>` value; `<Param>` names are plain singulars (`weekday1`, `weekday2`), not `weekdays_1`.
+- An enumeration ("A, B and C") is built from `list.slice(0, -1).map(...).join(', ')` plus the same `<Translate>` used for the two-item case; never `.join(', ').replace(...)` on the last separator.
+- No defensive normalization in render helpers for input callers never produce: no `[...new Set(x)]` when duplicates cannot occur, `if (x.length === 0)` rather than `if (!x || x.length === 0)` unless `null` is a real input.
+- Inside a `FinalForm` render tree `form` is already in scope through the render props; no `FormSpy` just to reach it. A `FormSpy` that is needed sets `subscription={{}}` or only the keys it reads.
+- Hiding a mounted `Final*` field with CSS is `style={hidden ? {display: 'none'} : {}}`, not an always-present style object with a conditional value.
+- Nested `if`s with no code between them merge into one condition.
+- `<Translate as="label">Recurring every</Translate>` when the translated string is the whole element; `{Translate.string(...)}` never appears inside JSX.
+- A picker is a controlled component (`value`, `onChange`): no `useState` mirrored from props through `useEffect`, no effect calling `onSelect` on every render, no `setTimeout` repairing an empty selection; constraints such as `requireOneSelected` are enforced as an early return in the click handler. Adapting to a SUI-style handler is done at the call site (`onChange={value => this.onWeekdaysChange(null, {value})}`).
+- Client state holds a multi-value field in the shape the API takes (a sorted array of keys, `PropTypes.arrayOf(PropTypes.string)`, payload key `recurrence_weekdays`), so the serializer passes it through; no object-of-booleans converted at the boundary. A query-string rule for a list param parses a single value into a one-element array (`if (!Array.isArray(value)) value = [value]`).
+- A `FinalField` whose value is an array or object passes `isEqual` (`unsortedArraysEqual` from `indico/react/forms` for order-free lists, `_.isEqual` otherwise) and the `FinalForm` gets `initialValuesEqual={_.isEqual}`; otherwise dirty tracking and reinitialization misfire.
+- An `ExpectedError` (HTTP 418) from a data request is shown in place as `<Message error content={error.response.data.message} />` by the component that fired it, before falling back to `handleAxiosError`; a fetch helper that handled its error returns nothing and callers check `if (!res) return;` before destructuring. Redux request slices expose `isXFailed` and `getXFailedMessage` selectors (`request.error?.message`) for the same purpose.
+- SUI states are props (`primary={selected}`, `disabled={disabled}`), never class name strings assembled by hand.
+- A prop that is rendered is `PropTypes.node` (or `oneOfType([PropTypes.string, PropTypes.node])`), never `PropTypes.object`.
+- Once a more specific rendering covers a case (weekly recurrence listing its weekdays), the generic branch for that case is deleted, not kept as a fallback; a tooltip does not repeat what is already visible next to it (date only when the time is in the row), with a one-line comment saying so.
 
 ## SCSS
 
@@ -164,6 +217,16 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - SUI styling leaks into nested controls of a widget placed inside `.ui.form`; the widget matches the size and density of neighbouring SUI controls, and the overrides are wrapped in named mixins so the debt can be found later. A custom element's disabled and hover styling lives in its own stylesheet, never inherited from a framework ancestor (`.ui.field`).
 - Hovering an already-selected item uses a distinct shade of the selection color; empty filler cells get no hover effect. Picker list items use compact padding (`var(--content-gap-within-inline)`). Every referenced CSS custom property resolves to a defined token; a floating panel gets a border plus shadow. Layout fixes that only one page needs go in that page's `.module.scss`, not the component stylesheet.
 - No device detection for layout; responsive through CSS or deferred. After shrinking a widget, re-check text that fit before (long month names in a `<select>`).
+- Focus styling on custom controls uses `:focus-visible`, never `:focus`, so a mouse click does not leave the ring on the control (or on a previously opened sibling).
+- A replacement dropdown is compared side by side with the SUI one: same width, same clear icon, option text aligned with the input text, no bottom radius on the input while expanded, listbox above surrounding content (`z-index`), list height of 6 to 7 items.
+- Secondary labels inside options (a price tag) stay right-aligned and on one line, dim together with a disabled option, and use a background distinct from the hover color; an option both selected and highlighted keeps readable contrast (open the list with a value preselected).
+- Framework override values (fonts, radii) are mixins in `_sui_debt.scss` and are not repeated in component stylesheets; a value also used outside SUI moves into that module, and nothing inside it is polished further.
+- `@use` and other SCSS string paths take single quotes; relative imports between files of one package are written `./name` so they are not mistaken for top-level modules.
+- Never edit the pasted icomoon block in `_icons.scss`; custom placeholders and overrides go after the `/* End of icomoon's icon definitions */` marker. `::before` rules cannot be extended, so an `%icon-x` placeholder duplicates the rule below the marker.
+- A rule for markup that no longer exists (`.i-button.signin`) is deleted when found next to the change; check `git log -S` for the removed markup.
+- Unusual CSS values copied from a reference (system colors such as `Highlight`) cite the source in the thread or a comment.
+- A library feature is enabled through the component's prop (`<Modal dimmer="blurring">`), never re-implemented with a `:global(.ui.dimmer)` rule.
+- A color used by one module goes in that module's palette (`rb:styles/palette`), not `base/_palette.scss`, and is named by role (`$filters-disabled-color`), not by shade (`$hazy-gray`). A palette `@import` that nothing in the file uses is removed.
 
 ## Jinja
 
@@ -199,6 +262,15 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A template that switches its base on a mode flag (`{% if preview %}{% extends ... %}`) becomes two templates, one in `display/` and one in `management/`. When a flow stops reloading the page, server-rendered explanations that assumed the reload go, and button labels that referred to them are reworded.
 - Integration settings get their own `form_fieldset` and field tuple (`form.X_FIELDS`); the template gates the fieldset on the same config flag that removes the fields from the form. A settings section shows a `message_box('warning')` when exactly one of two fields a feature needs is set; the check is a controller helper passed to the template, computed in both the full page and the section refresh.
 - A new `SideMenuItem` takes a weight no sibling uses; read the module's `_sidemenu_items` first.
+- Single quotes in Jinja expressions (`url_for('x')`, `skip=('a', 'b')`); calls stay on one line and are never formatted with a Python formatter.
+- Spaces inside the delimiters (`{{ form_row(form.x) }}`, not `{{form_row(form.x)}}`).
+- Templates use 4-space indentation; the content of `{% block %}` and `{% trans %}` blocks is indented one level like `{% if %}` bodies.
+- A link inside a `{% trans %}` sentence is passed as variables (`{% trans link='<a href="%s">'|format(url_for('x'))|safe, endlink='</a>'|safe %}...{{ link }}text{{ endlink }}...{% endtrans %}`); the anchor is built with `|format`, never with `~` concatenation.
+- A checkbox whose label text the template renders calls `form_row(field, skip_label=true)` and puts the text in a `form-field-description` div; no CSS to hide the label or the required marker.
+- A placeholder used inside a sentence goes into the translatable string itself (`{% trans %}{{ tz }} (your profile timezone){% endtrans %}`), never a bare fragment with a `{# Translators: ... #}` comment explaining the context.
+- No `{{- x -}}` whitespace control around a placeholder inside a `{% trans %}` sentence; it strips the spaces around the word.
+- `data-params-selector` entries are anchored on a unique parent id (`#tz-selector [name=tz]`); a bare `[name=x]` matches any same-named input on the page.
+- Templates rendered on public pages guard `session.user` (it is `None` for anonymous visitors) before reading `session.user.settings`.
 
 ## Verification
 
@@ -210,3 +282,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Test in Safari as well for `<dialog>`, click-outside and focus handling (navigation buttons must not close the dialog). Build with webpack and clear every new warning (duplicate side-effect imports, aliased imports of sibling modules).
 - Try a widget near the viewport bottom, inside a centered modal, next to a sticky toolbar, disabled, inside and outside `.ui.form`, with a non-English locale, and while editing an existing record; its disabled, hover and font styling must match in every context. Check single-month, two-month and inline variants at their natural width.
 - Keyboard-only pass: tab to the trigger, arrows across a month boundary, Escape, focus back on the trigger; screen reader pass on selection and mode change announcements.
+- Click options in Firefox while moving the mouse slightly: no text selection appears below the `<dialog>`; defer closing until the click has been handled when it does.
+- Drag the field in the registration form designer: a custom element gets disconnected and reconnected and must not throw.
+- Loading a rendered policy as a plain fieldset (not an `<h3>`) is checked on a stock instance without customizations before posting screenshots.
+- Diff shared legacy partials (`_buttons.scss`) line by line; a flipped side or sign (`margin-left` to `margin-right`) changes every consumer, so compare before/after screenshots of a page that uses it.

@@ -132,6 +132,41 @@ Check the touched Python files and their callers against every item.
 - A validator resolving a reference returns early on an empty value, then raises `ValidationError('Invalid file')` (no i18n) when it does not resolve; it never passes silently and drops conditions an earlier guard established.
 - Collections are serialized with `Schema(many=True).dump(items)`, the schema instantiated once outside the loop. A `has_x` helper returns a bool via `.has_rows()`. Many-to-many membership is filtered through the relationship (`.any(User.id == user.id)`), never the association table.
 - A subclass does not adopt a better mechanism (`mm_field_class = MMFileField`) while its parent keeps the hand-rolled one; stay consistent and note the refactor. A new relationship on `User` lands in the personal data export schema. A new column in a management list is a list-generator item managers can toggle, not always-on markup.
+- `session.pop(key, default)` replaces a `session.get` followed by `del session[key]`.
+- No parse-and-rebuild round trip that returns the input unchanged (`urlunsplit(urlsplit(url))`); validate with `urlsplit` and keep using the original string.
+- Do not store values derivable from another stored value (a server name or domain next to its URL); parse them when needed.
+- `settings.delete('a', 'b')` removes several keys in one call; no one call per key.
+- A helper that only validates raises and returns nothing; callers never consume a return value from it (`_validate(x)` then use `x`, not `xs.append(_validate(x))`).
+- Never reassign a parameter or local with a narrowed version of itself (`languages = set(languages) & set(renames)`); put the expression in the loop header.
+- Nested guards collapse into one condition (`if python and po_file_empty(p):`), not `if python:` wrapping `if po_file_empty(p):`.
+- Open the file and handle `OSError` with `errno.ENOENT` (`return False`, otherwise re-raise) instead of an `os.path.exists` check before `open()`.
+- Filesystem checks use `Path.glob('*/translations')` or `os.path.exists(os.path.join(...))`, never membership tests over `os.listdir()` output or nested `listdir` loops with `isdir` checks.
+- File-format checks go through the library parser (`babel.messages.pofile.read_po`; an empty catalog is falsy), never substring counting (`data.count('msgid')`). No nested `def` inside a function; make it a module-level helper.
+- Core has no `# pylint:` directives; the linter is ruff, suppressions are `# noqa: CODE` on the offending line.
+- A CLI command whose exit code CI depends on keeps `sys.exit(1)` on failure; when the logic is reused by another command, split it into a helper returning a bool and keep the command exiting.
+- A check with known false positives (format-string validation) does not abort the operation it precedes, or ships an opt-out flag (`--no-check`).
+- No blank line after a `def` line; the body starts immediately.
+- A call whose only argument is a dict literal keeps `({` on the call line and closes with `})` or `}, kw=...)` at the call's indentation (`@use_kwargs({ ... }, location='query')`, `jsonify({ ... })`); never the exploded formatter layout with the dict on its own lines.
+- No `.keys()` where the dict itself iterates (`validate.OneOf(SIZES)`, `x in d`).
+- A constant used once is inlined; one kept because a calculation references it gets a fully qualified uppercase name when it lives on a mixin or RH class (`QR_BORDER_SIZE`, never `border`).
+- An extension point where plugins contribute typed things (a name, a pattern, a lookup function) is a base class in core (`CustomTicketCode` with `name`, `regex`, `lookup_registration`) returned through one signal and read with `named_objects_from_signal`, not freeform dicts merged into a payload and not two signals (one for setup data, one for handling).
+- Abstract class attributes on a base class default to `None`, never to an example value (`regex = None`, not `regex = r'...'`).
+- Core supports every registered handler of a hook: build the result from all of them, never take `[0]` of the signal results.
+- Collections keyed by a unique name are dicts (`{x.name: x.regex for x in handlers.values()}`), not lists of `{'name': ..., 'pattern': ...}` entries; the key is always present in the payload (empty dict when nothing is registered), never added conditionally.
+- `key=itemgetter('position')` over `key=lambda x: x['position']`; `sorted(d.values(), key=...)` over `list()` plus `.sort()`, and no `list()` around an iterable passed to `sorted`.
+- Build output in its final order (dicts keep insertion order) instead of sorting afterwards and deleting the sort key from every entry.
+- Multi-line boolean SQL criteria use `and_(a, b, c)`; `a & b & c` only when it fits on one line.
+- No override that only delegates to the base method (`def _check_access(self): Base._check_access(self)`); delete it.
+- An "absent" sentinel is `None` (`getattr(obj, '_CORS', None) is None`), never `False`, since an empty options dict is a valid value.
+- Per-endpoint cross-cutting behavior (CORS) is declared with an RH class decorator (`@cors`, next to `@json_errors`) that stores a class attribute read by the view-function factory, never with a blueprint-wide URL regex registration; the error handler applies the same options so error responses carry the headers too. A decorator usable with and without arguments takes `(rh=None, /, **options)`.
+- A closed set of string values accepted by several endpoints is one module-level tuple (`WEEKDAYS`) reused in every `validate.OneOf(...)`, in the model's CHECK constraint and in derived lookups (`WEEKDAYS[dt.weekday()]`); never a literal list repeated per field.
+- A value that always travels with an existing tuple (`repetition = (frequency, interval)`) joins that tuple and the model property that builds it, instead of becoming one more positional parameter threaded through every function in the chain; tests and templates follow in the same commit.
+- First and last of an ordered relationship come from one ordered query indexed `[0]` and `[-1]`; never two `next(...)` scans over differently ordered iterations. The emptiness guard is `if not any(occ.is_valid for occ in ...)`.
+- When a comprehension must wrap, break before `for` with the clause aligned under the expression; never split the iterable call's argument list across lines.
+- A presence check over request args (`all(x in args for x in (...))`) lists only the args the client always sends; optional ones are read with `.get()` so a request without them still takes the main branch.
+- An input combination that yields nothing (a date range containing none of the selected weekdays) raises `ExpectedError(_('...'))` from one shared check (`check_impossible_repetition(data)`) that every endpoint consuming the combination calls first; the check returns early on missing keys so partial payloads pass through.
+- A special case in a diff or log routine (`old == 'None'`, skipping a field when `new is None`) points at a wrong default upstream (`default=[]` on a nullable column); fix the default to `None` and delete the special case.
+- A field that belongs to an existing logged group (weekdays under the repetition) joins that group's tuple (`repetition_fields`) so the log says the group changed; no separate pretty name for it.
 
 ## Naming And Comments
 
@@ -152,6 +187,19 @@ Check the touched Python files and their callers against every item.
 - Docstrings are full sentences ending with a period, summary on the opening `"""` line (or starting on the next line when none fits), reST `:param x:` style, no Google-style `Args:` sections.
 - Availability of a feature is split into named flags: `is_x_enabled` (own toggle), `is_x_configured` (global flag plus inherited configuration), `is_x_available` (both); each surface checks the flag it needs.
 - Hook signals that let plugins alter a payload are named after the data (`google_wallet_ticket_class_data`); builders are `build_x_data`, remote calls `create_x` / `patch_x`. User-facing identifiers use `friendly_id` (`f'#{registration.friendly_id}'`), never the database `id`.
+- A column or field covering several things (terms of service and privacy policy) is named after the generic concept (`accepted_terms_dt`), never after one of them (`accepted_tos_dt`); its `#:` doc comment lists what it covers.
+- One concept keeps one field name across the signup schema, the WTForm and the client payload (`accept_terms`), no per-surface variants (`accept_registration_terms`).
+- Docstring summaries are imperative ("Get the server name", "Strip away the path"), never third person ("Gets", "Strips").
+- Class and function names name the concept, never enumerate behaviors with `And` (`RHQRCodeMetadata`, not `RHQRCodeAndMetadata`).
+- An RH docstring is one sentence saying what it returns or does ("Return metadata for the requested QR code."); it never lists parameters or option values inline.
+- Product terms in messages and docstrings use their standard casing ("QR code", not "QR Code").
+- snake_case for every Python identifier, including kwargs that mirror a camelCase JS prop (`override_required`, not `overrideRequired`).
+- No section banner comments grouping classes in a module (`# Schemas for the X API`); class names carry it and later additions ignore the banner anyway.
+- Spelling in docstrings: "Indico" capitalized, "Indico-style" hyphenated, "QR code" with lowercase "code".
+- An attribute consumed in another runtime (a regex evaluated by JavaScript) says so in its `#:` doc comment, including what syntax to avoid.
+- Docstrings have no spaces inside the quotes (`"""Check ...`), the summary line ends with a period, and the closing `"""` sits on its own line unless the whole docstring is one line. A summary that only rephrases the function name is replaced by what the function actually verifies.
+- `:func:` for module-level functions, `:meth:` only for methods; a Sphinx role takes single backticks, a bare literal takes double backticks. Mentioning the sibling by name is optional; a wrong role is not.
+- No comment between a decorator and its `def`; it goes inside the body.
 
 ## Imports
 
@@ -220,6 +268,17 @@ Check the touched Python files and their callers against every item.
 - A new RH delivering an existing artifact in another form subclasses the artifact's RH (`RHTicketGoogleWallet(RHTicketDownload)`) so `_process_args` and `_check_access` stay shared; when unavailable it raises `NotFound('...')`. A management endpoint that already serves the generic case (file download) is reused for the new subtype; a dedicated RH only where handling differs. An endpoint rename follows into every consumer (`url_for`, `indico-url:` imports, `fields.Function` URLs).
 - A file tied to an account is served by its own RH (`/user/data-export.zip`, `file.send()`, `NotFound` when absent) under the owner's access check; `signed_download_url` is for contexts without an owner. The notification email links to the page that offers the download, not to the file.
 - Actions an admin can run on another user's data log target and actor at `info` (`'... for %r triggered by %r', self.user, session.user`). Blueprint `url_defaults` callbacks that read `request` guard with `has_request_context()`; `url_for` also runs in Celery and the CLI.
+- Match the blueprint with `request.blueprint`, never `request.endpoint.split('.', 1)[0]`.
+- A per-request interception that redirects users returns early when `request.endpoint` is unset (404), allows only an explicit list of endpoints (its own blueprint, `assets.*`, `*.static`, `auth.logout`, `core.contact`, `core.change_lang`) and redirects only plain page loads (`request.method == 'GET'` and neither `request.is_xhr` nor `request.is_json`), so API calls and form posts are not silently redirected.
+- Checks that need the current user run inside the RH flow (right after `_check_csrf()`), not in an `app.before_request` hook: `g.rh` is not set there, so `session.user` fails on `@allow_signed_url` endpoints.
+- Input validation is a webargs validator: a module-level `_check_x` raising `ValidationError`, attached with `validate=_check_x`; never an RH helper that returns the value and raises `BadRequest`.
+- An endpoint deriving an artifact from an object's URL (a QR code for the event link) takes the object id, builds the URL server-side with `url_for(..., _external=True)`, inherits the object's base RH (`RHProtectedEventBase`) and lives under the object's URL prefix (`/event/<int:event_id>/share/qr/image`); no free-text URL parameter plus hostname check.
+- An RH that resolves its object from the request payload rather than URL args still inherits the module's protected base and assigns `self.event` (and the object) in `_process_args`, so the standard access check runs; a bare `RH` with `_check_access` stubbed to `pass` lets any logged-in user read the data. `@use_kwargs(..., location='json')` may decorate `_process_args` for that lookup.
+- An unresolvable input never ends in a silent `return`: an unknown identifier raises `BadRequest('Unknown code')`, a lookup that finds nothing raises `NotFound('No registration found')`, each as an early guard.
+- `_process` when every method runs the same logic; `_process_GET` / `_process_POST` only when the methods differ.
+- Nested API URLs name each level by its resource in plural (`/event/<id>/forms/<id>/registrations/<id>`), never a singular model name followed by an id; an action endpoint (`/custom-qr-code`) has no trailing slash.
+- Module `__init__.py` holds signal handlers and startup checks; helper functions called from controllers go in `util.py`.
+- Every RH that builds a payload dict from args for the model (`new_booking_data`) includes the new field; a field that changes computed children (occurrences) lands in every set and comparison that decides recomputation (`populate_fields`, `occurrence_fields`, `has_same_dates`, `should_split_booking`). Walk the edit flow changing only the new attribute.
 
 ## Signals
 
@@ -237,6 +296,9 @@ Check the touched Python files and their callers against every item.
 - A handler lives in the module of the work it performs, not the module that emits the signal. Handlers name the sender by what it is (`event`, not `sender`), declare each kwarg they read, keep `**kwargs` only for future kwargs, and never `kwargs.get()` a key the signal always sends.
 - Handlers of broad signals (`event.updated`) intersect the `changes` keys with the fields they care about (`set(changes) & fields`) and return otherwise. `event.updated` is not reliable for date changes (auto-extension by moving a contribution bypasses it); date-dependent sync handles `event.times_changed`, or a comment says why it is unnecessary.
 - A handler on a per-registration signal checks that registration's own form flag, not an event-wide query. The importable signal name matches the string name (`x_data` / `'x-data'`).
+- The discriminating name goes in `sender` so plugins can connect for one sender only; the payload goes in kwargs.
+- Plugins extend data returned by a hook (`qr_data.update(...)` with each handler's dict); they never replace it.
+- No `isinstance` check on signal return values that `values_from_signal` already filtered; only unexpected types justify a guard.
 
 ## Forms (WTForms)
 
@@ -267,6 +329,10 @@ Check the touched Python files and their callers against every item.
 - A mode dropdown is an `IndicoEnumSelectField(enum=RichIntEnum)`; context-dependent titles go through `field.titles`, unavailable members through `field.skip` (`{Mode.inheriting}` on the root).
 - Credentials entered in a settings form are verified against the provider in `validate()` after `super().validate()`, only when they or the related identifier changed; the client returns an enum of outcomes and the form appends one message per outcome to the field it concerns.
 - Field labels inside a fieldset do not repeat the fieldset name (`Issuer ID`, not `Google Wallet Issuer ID`); descriptions of provider identifiers state operational constraints (never reused across servers, changing it breaks updates) and known limitations.
+- Cross-field rules (requiring a toggle only when related content is set) live in a `validate_*` method on the form so the error renders inline; a `flash()` plus redirect in the RH loses everything the user typed.
+- New fields follow the wrapping style of the sibling fields in the same form class; no formatter-style multi-line field in a form whose other fields wrap by hand.
+- Every checkbox has a clickable label (an empty label is an a11y bug); a long sentence becomes a short label (`Accept terms`) plus the sentence as `description=Markup(...)`. Label text that depends on settings means a form class built per request with `type('_Form', (IndicoForm,), {})`, never an empty label with the text in the template.
+- URL validation and normalization for one field lives in the validator class (or the schema), not in a shared `web/util.py` helper that both the form and the RH call.
 
 ## Schemas (marshmallow)
 
@@ -294,6 +360,16 @@ Check the touched Python files and their callers against every item.
 - A user-facing export contains only what the user sees in the UI: no registration tags, no manager-only fields or sections (`field.parent.is_manager_only`), no internal `meta` blobs, no system-level configuration. For an association keep the user-specific data with the related object nested under it.
 - A per-user export walks every relationship on `User`, legacy ones included, and both directions of a relation (`reservations` and `reservations_booked_for`); denormalized pairs are both exported (`affiliation` and `affiliation_link`). Content the user authored in another entity (note revisions) is its own section with raw `source` and `render_mode`, linked by id. Soft-deleted rows stay in a personal data export with `is_deleted` exposed.
 - A schema field dumping a lazy relationship with nested rows becomes a `fields.Method` calling a query helper that carries the eager-load options. Dump every schema against populated fixtures and read the output; a list of `null`s or an empty mapping means the field reads the wrong attribute.
+- A field the client only sends when a setting is on is declared conditionally inside the schema (`if legal_settings.get('x'): accept_terms = fields.Bool(required=True, validate=not_empty)`); an unconditional `required=True` fails validation whenever the feature is off.
+- A single-field truthiness check is `validate=not_empty` (or `validate_with_message(bool, msg)`) on the field, not a `@validates` method; an error the user can never see needs no i18n.
+- An optional URL setting is either `None` or a valid URL: the schema rejects `''` (or disallows `null` and defaults to `''`); never normalize at the read site with `value or None`.
+- No `attribute=` equal to the field name (`fields.Bool()`, not `fields.Bool(attribute='is_open')`).
+- Counts in a schema never come from `len(relationship)` (`fields.Function(lambda r: len(r.registrations))`); they read an existing `column_property` (`existing_registrations_count`) or a new one, and the list RH undefers every count the schema dumps.
+- A detail schema reused for a list endpoint excludes its heavy nested fields (`Schema(many=True, exclude=('registration_data',))`), and the list query eager-loads what the remaining fields read (`selectinload('data').joinedload('field_data')`, `selectinload('tags')`, `undefer(...)`).
+- Normalization that depends on another field (clearing `recurrence_weekdays` unless the repetition is weekly) is a `@post_load` hook on the schema, never a util helper called from the RH. The hook enforces the invariant positively (`if data['repeat_frequency'] != RepeatFrequency.WEEK: data[...] = None`), not the one transition the author tested (`== MONTH`).
+- `@post_load` and `@validates` hooks are `_`-prefixed and named after the invariant (`_weekdays_only_weekly`, `_check_weekdays_unique`), not after a scenario (`handle_monthly_repetition`).
+- A list field over a closed set validates its items (`fields.List(fields.Str(validate=validate.OneOf(WEEKDAYS)))`) on every args dict and schema that accepts it, plus a `@validates` duplicate check (`len(x) != len(set(x))`, plain `ValidationError('Duplicate weekdays')`, no i18n); the database carries matching CHECK constraints.
+- A new column that older rows lack is backfilled at dump time with `@post_dump(pass_original=True)`, derived from existing data (`WEEKDAYS[booking.start_dt.weekday()]`), in every schema that exposes the field (details and calendar alike) so the client never special-cases legacy rows.
 
 ## SQLAlchemy And Migrations
 
@@ -344,6 +420,14 @@ Check the touched Python files and their callers against every item.
 - A relationship to `File` never cascades deletes (the blob stays orphaned); copy an existing `File` relationship (`lazy=True`, named backref) and release with `file.claimed = False` so the cleanup task removes it.
 - Pair `joinedload(rel)` with `.raiseload('*')` so any lazy load surfaces during testing. When the filter joins or uses `.any()` over a relationship you also eager-load, select the ids first and load the rows by `Model.id.in_(ids)` with the loader options. `joinedload('rel').load_only('id', 'title')` on joined parents; deep chains go in a local strategy variable; `selectinload` for collections. Check the SQL log over fully populated fixtures.
 - Ids stored in JSON data that reference event objects are remapped in the cloner through `shared_data`, reset to `[]` when the dependency cloner did not run, and entries whose target no longer exists are dropped, never left as `None`.
+- Datetime columns use `UTCDateTime`, date-only columns `db.Date`; never bare `db.DateTime`.
+- The revision title, docstring and filename name the schema change (`add_accepted_terms_dt_users`), not the feature ("force accepting terms of service"); a column rename during review renames the revision too.
+- A datetime that travels through a JSON blob (registration request data) is stored with `.isoformat()` and parsed back with `datetime.fromisoformat` where consumed, with a one-line comment saying why it is a string there.
+- Never `filter_by` after a `join`: it applies to the last joined entity and reads as a filter on the queried one. No `is_deleted=False` filter on a `with_parent()` query whose relationship already excludes deleted rows.
+- A nullable array column has `default=None`, never `default=[]`; `NULL` means not applicable, and a CHECK constraint ties non-NULL to the states where it applies (`(recurrence_weekdays IS NULL) OR repeat_frequency = 2`), interpolating the enum member in the model (`{RepeatFrequency.WEEK}`) and the literal in the migration.
+- An array column over a closed set gets CHECK constraints for membership (`col::text[] <@ ARRAY[...]::text[]`) and uniqueness in model and migration alike.
+- A SQL function a constraint needs lives in `indico/core/db/sqlalchemy/custom/<name>.py` with a `create_<name>_function(conn)` guarded by an `information_schema.routines` lookup, is registered in `_before_create`, and the migration runs the same `CREATE FUNCTION` with `op.execute` before the constraint and `DROP FUNCTION` in `downgrade`.
+- `downgrade` does not drop a CHECK constraint of a column it drops. The revision docstring title is capitalized ("Add ...").
 
 ## Config And Startup
 
@@ -357,6 +441,8 @@ Check the touched Python files and their callers against every item.
 - Log-type or derived data gets its own storage setting (default `None`), never `ATTACHMENT_STORAGE`, which holds long-term user content.
 - Derived config values are `@property` on `IndicoConfig` (or computed in `_postprocess_config`), never added to `DEFAULTS`; absolute URLs via `urljoin(self.BASE_URL, path)`, never `'http' in url`. A global kill switch (`ENABLE_X`) hides UI and gates every consumer; it never deletes stored configuration when toggled off.
 - An image an external service shows in a different context (a wallet card) gets its own URL setting with a matching `ABSOLUTE_*` property instead of reusing the site logo; the bundled default fits that context.
+- A setting holding a date or datetime gets a converter on the `SettingsProxy` (`DateConverter` next to `DatetimeConverter`); callers never parse the stored string themselves.
+- A getter built on `named_objects_from_signal` gets an `@signals.core.app_created.connect` handler (`_check_x_handlers`) that calls it once, so duplicate names raise at startup instead of on the first request.
 
 ## Logging, Flashing, Errors
 
@@ -410,6 +496,8 @@ Check the touched Python files and their callers against every item.
 - Record that a remote object was created (its id in an `EventSettingsProxy`) so later handlers skip API calls when nothing was created and a query can list affected events; "in use" derives from that record, not from counting registrations. Remote artifacts link back to the Indico pages (`event.external_url`, `url_for(..., _external=True)`).
 - A long-running job (an export) runs in Celery and emails the user when it finishes; no client polling loop. A per-user background job is unique: a running one blocks a new request, a finished one is replaced and its file released. A feature that claims a stored file owns its lifecycle: a scheduled task removes stale ones after N days and the row's state records the expiry.
 - An archive export writes one file per top-level section (`{key}.yaml`); member names are relative (no leading `/`), user-provided names go through `secure_filename` with the row id prefixed (`{id}_{stem}{suffix}`), and a blob referenced from several rows is written once. Extract into an empty directory to verify.
+- `resp.json()` sits inside the same `try` as `raise_for_status()` and the handler catches `(requests.RequestException, requests.JSONDecodeError)`; a 200 with a non-JSON body must not raise.
+- When a library kwarg is misspelled and a correctly spelled alias exists, use the correct one; when only the misspelling exists, open an upstream issue proposing the fix with a fallback for the old name.
 
 ## Security
 
@@ -426,6 +514,7 @@ Check the touched Python files and their callers against every item.
 - Picture sizes and similar magic numbers are module constants; `A if cond else B` without a negated condition.
 - A resource an external service must fetch from a restricted object (an event logo) is exposed through a signed URL (`secure_serializer.dumps(self.event.id, salt='event-logo-download')` as a `token` query arg checked in `_check_access` before the normal check), never by requiring the object to be public.
 - Security checks (password strength, pwned passwords) are never `@make_interceptable`; extra checks go through the signal they already fire.
+- A redirect target from the request is never validated with `startswith('/')` (`//evil.com` passes); store the return path in the session and redirect from there, so no user-provided URL reaches `redirect()`.
 
 ## Behavior Changes
 
@@ -444,3 +533,4 @@ Check the touched Python files and their callers against every item.
 - Labels name the behavior plainly ("Lock email address", "cannot be changed during registration"); verbs are consistent across UI, flash messages and changelog ("re-send").
 - An option that has no effect in a mode is hidden in that mode; a client-side toggle that only hides inputs still needs the server to ignore their values.
 - A view scoped to a child object (one session's timetable) has no parent context: display decisions derived from the parent are forced to the standalone-sensible value.
+- A manager editing a registration never fills untouched fields with their defaults; defaults apply only when the registrant submits, so unanswered fields stay visibly empty. The "nothing selected" shape per field type is `empty_value` on the field implementation (`{}` for choices, `{'choice': None}` for accommodation, `None` for booleans), distinct from `default_value`.

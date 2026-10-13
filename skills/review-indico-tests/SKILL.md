@@ -23,6 +23,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - `@pytest.fixture` without `scope='function'`; it is the default. Never redefine a core fixture name (`freeze_time`, `snapshot`) in a test module; a module-specific variant (`freeze_time_for_snapshots`) wraps the global one and is `autouse=True` when every test needs it.
 - Factory fixtures take required arguments positionally (`create_attachment(user, object, title, ...)`); keyword-only is for optional ones. Explicit fixture ids are high (`420`, `1337`), not `42`: a test creating that many rows collides with the sequence.
 - A snapshot directory is set once by a module-level wrapper (`_assert_yaml_snapshot(snapshot, data, name)` with `__tracebackhide__ = True` and `snapshot.snapshot_dir = SNAPSHOT_DIR`); the shared helpers (`assert_yaml_snapshot`, `assert_email_snapshot`, `remove_dynamic_data`) live in `indico/testing/util.py`. A field added to an export schema updates every export snapshot (the empty-user one included); run the snapshot tests instead of regenerating blindly.
+- No `db.session.add()` for an object constructed with a relationship to a fixture row (`RegistrationFormSection(registration_form=dummy_regform)`); the cascade adds it. Remove the import that only the dropped line used.
 
 ## Assertions
 
@@ -34,6 +35,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Negative tests cover redundant and nonsense inputs, not only the empty case.
 - Every positive rule gets its counter test (different type allowed in another event).
 - Expected lists derived from an enum are built from the enum in a fixture (`for opt in DataExportOptions`), not typed by hand. Snapshot normalization keeps `null` visible (`(?!null$)` before the placeholder) so a field that unexpectedly becomes empty still fails.
+- A property returning a tuple is asserted against the full tuple built from the columns (`(a, b, c) == obj.repetition`); extending the tuple updates every parametrized case with the new member (`None` where it does not apply) in the same commit.
 
 ## Test Data
 
@@ -43,6 +45,8 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Fake persisted rows get an explicit `id` when the code branches on it.
 - Build related rows through relationships (`parent=section`), not `parent_id=section.id` after a manual flush. Drop fixture arguments the test does not read. Multi-line dict literals close `}` on its own line.
 - Denormalized pairs are set together as the application would (`affiliation` text with `affiliation_link`). Every nested schema in a snapshot is exercised with at least one populated row; `[]` or `null` for a section hides typos in its `Meta.fields`.
+- Setup does only what the code under test checks: no `flush()` unless an id is read back, no `start_dt` / open-period dates when `create_registration` does not check them and the form has no end date.
+- After a new CHECK constraint, every fixture call that builds rows satisfies it (`recurrence_weekdays=None` on a daily reservation); do not keep values the constraint now rejects just because the fixture never flushed before.
 
 ## Layout
 
@@ -75,6 +79,14 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Handler of a broad update signal: an irrelevant change makes no API call, a relevant one does; credentials unchanged on save: no verification request; signed URL: valid token bypasses protection, missing or wrong token falls back to the normal check; remote object missing (404) on a silent sync: no error, no creation.
 - Date widgets: the edit path (initial value in canonical format); a non-UTC browser timezone round-trips the same day; a non-English locale; a month where every day is disabled by `min` (no focusable day, no console error); reopen after selecting a range; edit only one end of a long range; a bound toggled while the picker is open; second click before the first in both pickers; per sub-field empty, invalid and out-of-bounds messages after the trigger was clicked and the dialog closed without typing; locked end with and without a value; `readOnly` vs `disabled` vs both.
 - Registrant-facing pages and file links opened logged out through the token link. Paginated lists with more rows than the largest page size, exactly one page, zero rows, and a search with no match. Export with every option selected and every fixture populated; extract the archive into an empty directory and read the YAML.
+- Choice widgets: switch between choices with different slot limits (slots reset), clear the choice (slots disappear), type text matching no option on a non-required field (validation error), sold-out option (visible, disabled), field locked after payment and form submitting (disabled), two options differing only by case, widget near the viewport bottom.
+- Optional settings left unset (an effective date of `None`) on every page that reads them; a forced-acceptance flow with a freshly signed-up account and with an effective date in the future (the user must not get stuck).
+- A CLI over external data is run against real inputs (a fresh Transifex pull, actual plugin directories) and the files it should produce are checked on disk (`messages.mo` present, empty `.pot` files removed), not only the exit code; translation catalogs may carry the `fuzzy` header flag, so compilation covers that case.
+- Every public page the change touches is loaded logged out, and every page where the widget renders its disabled or reduced variant (management area); the page script must not throw.
+- Run `bin/utils/db_log.py -S` while submitting a changed form in each mode; a mode that should not persist a value (a "remember" flag with a non-custom option) must produce no write.
+- Manager vs registrant on the same form: required fields enforced for the registrant (edit through the display RH raises `UnprocessableEntity`), skipped for the manager on create and on edit, with `alwaysRequired` and personal-data fields still enforced.
+- Changing how a cross-cutting mechanism is wired (CORS from blueprint config to a decorator) re-runs and updates its tests, including the error response path.
+- Editing a row created before a new column existed (a weekly booking with `NULL` weekdays): the dialog preselects the derived value and saving works. Changing only the new attribute on an ongoing booking triggers the split logic. A date range containing none of the selected weekdays on every endpoint that builds the series (search, suggestions, conflicts, edit calendars, create). Switching repetition type back and forth in the edit form leaves no stale value in the payload.
 
 ## Plugin Boilerplate
 
