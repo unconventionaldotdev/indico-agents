@@ -16,7 +16,10 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Dialog open state lives in the parent (`editItem` state); no `cloneElement` trigger wrapping. One `Confirm` for the selected item, with the item's identifier in state, never one rendered per row (a boolean flag opens all of them and the last one wins).
 - One-click actions that are hard to undo get a confirmation dialog; a mode that users repeat (linking several occurrences) is not exited after one success.
 - Inputs are disabled while their data loads (`disabled={loading}`); test with a `time.sleep(3)` in the controller.
-- Component names match what they are (`TemplateManagement`, not `Router`); prefer named exports so the import site shows the real name.
+- Component names match what they are (`TemplateManagement`, not `Router`); prefer named exports so the import site shows the real name. Components are `function` declarations, not expression-bodied arrows (`export default function X({...}) {}`), so a statement can be added while debugging.
+- Components used by one module stay in that module, not in the global `react/components` index.
+- Data for a dropdown loads once with `useIndicoAxios` (`{manual: true}` when not always needed) plus an explicit "refresh" button, not on every open; a refetch on open also retriggers dependent effects (previews).
+- Filter semantics: a single selected value matches every item containing it; a "multiple values" filter is a separate option. Verify with real data before review.
 - Lists of options come from the data the server sends (default templates), never a hardcoded list; the "blank" or default choice goes first.
 - Read values from props and state where they are needed instead of threading them through several method parameters.
 - No flash of empty state between load and render; pass existing data in instead of refetching; verify the loader is visible with a slowed request.
@@ -95,6 +98,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 ## Jinja
 
 - Reuse core macros (`format_event_date`) before hand-rolling.
+- Inline scripts: `<script>` without `language`, no jQuery in new code (`document.querySelector`, `classList`, `domReady.then(() => ...)`), arrow functions. Jinja booleans are lowercase (`false`); `{%- trans %}` on its own line for long strings.
 - Shared templates (`forms/_form.html`) never branch on one form's id; page-specific behavior lives with that page. No `XMLHttpRequest`: `indicoAxios` in JS modules, `fetch()` in the rare inline script, and preferably no inline request code at all.
 - `{{- x -}}` where output is inline; `data-no-qtip` on `title` attributes that must not open a qtip.
 - `url_for_plugin('.endpoint')` inside blueprints; shared URL values via `@blueprint.url_defaults`.

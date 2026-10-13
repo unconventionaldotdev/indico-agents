@@ -209,7 +209,15 @@ Check the touched Python files and their callers against every item.
 - A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
 - Multi-line queries: `(` on its own line, `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
 - `.one()` on lookups that cannot miss (soft-deleted rows still exist); no defensive `- {None}` or `or {}` without a reproducible case, and a comment when one exists.
-- Set intersection is `a & b`, never `bool(a.intersection(b))`.
+- Set intersection is `a & b`, never `bool(a.intersection(b))`. Subset checks are `keywords <= allowed`; "any invalid" is `invalid := values - allowed`; `sorted(a & b)` over list comprehensions with membership tests; `dict.setdefault` over `if key not in d`.
+- A POST that modifies data ends with `return redirect(url_for('.same_page'))`, never by rendering the page (F5 would resubmit).
+- Never assign a field on a form class at runtime (shared globally); build a subclass per request: `type('_Form', (BaseForm,), {'field': field})` from a `form_class` property. A field added dynamically gets a one-line comment on the base form so its `validate_*` does not look orphaned.
+- Whitelist validation of stored values adds the existing data (`field.object_data`) to the allowed set so a shrunk whitelist does not block saving unrelated changes. Keep whole hashes of a `ValidationError` message free of user input (it renders as HTML).
+- Deterministic pure functions called in loops (`generate_contrast_colors`) get `@functools.cache`; cheap recomputation beats a conditional cache (no premature optimization).
+- Setting proxies are named by scope (`global_event_settings`), never `misc`; `event_settings` is reserved for per-event plugin settings.
+- Images from users: open with Pillow, catch `OSError`, allow `{'jpeg', 'png', 'gif', 'webp'}` by `pic.format`; never trust MIME type or extension, never `Image.OPEN` (lazy), never user SVGs in PDF rendering (the URL fetcher follows embedded URLs). No JPEG-to-JPEG roundtrip. Guard `event.has_logo` before reading the logo. Previews are cached with `@memoize_redis(3600)` on a module-level function.
+- `raise ... from exc` when wrapping; catch the real exception, never bare `Exception`; `.first()` plus `if not x` over `.one()` in `try`. `Path(root) / 'a' / 'b'` segments as elsewhere in the module. Pick one noun per concept (`image`, not `picture`).
+- Image-like user input in template custom fields is restricted to the internal scheme (`event://`) even when an URL fetcher would reject the rest; defense in depth is accepted.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
 - Partial-index `WHERE` clauses must be justified.
 - Iterate enum members, never `range` over their values; SQL in triple-quoted strings indented under the call.
