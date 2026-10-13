@@ -97,6 +97,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Nothing loads from a CDN (pdf.js worker, editor assets): ship it through webpack (`CopyWebpackPlugin` into `dist/js`, `workerSrc` pointing there). A heavy module is lazy-loaded behind a wrapper component with a `Loader` (`await import(...)` in `useEffect`), the inner component reusing `Wrapper.propTypes`.
 - Admin-only code goes in its own bundle (`module.json` `partials: {admin: './admin.js'}`, page bundles `module_x.admin.js`) so regular pages do not load it. Empty `index.js` files are deleted.
 - `Translate.string('Template "{title}" was added', {title})`, never a template literal inside `Translate.string`.
+- Inside an SPA, redirect with `useHistory().push(url)`, never `location.href`. Deletions use `RequestConfirmDelete` with `persistent` and a `requestFunc` that returns `true` on error after `handleAxiosError`; the component handles the busy state, so no own `submitting` flag.
+- Multi-value text inputs split on `,` and `;`; a dropdown that acts as a text input hides its icon (`icon=""`).
 - Unmounting a FinalForm drops its state; no `form.reset()` on cancel. A one-line redux action is duplicated under a fitting name rather than reused under a misleading one.
 - A tooltip with a date shows just the date in a `<time>` element, no translatable "On {date}". Destructure related values together (`const {createdDt, modifiedDt} = block`).
 - `data-*` attributes carry values the JS reads (sorting text), never an object repr.
