@@ -75,6 +75,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Reuse an existing action to reset a flag when its name fits the new use; when reusing would mislead, duplicate the one-line action under a fitting name instead.
 - Redux request slices expose `isXFailed` and `getXFailedMessage` selectors (`request.error?.message`) so components can show the failure in place.
 - Mode-specific filters, controls and refetch triggers are gated on the mode (`state.linking.type && ...`); leaving the mode clears its state and refetches the regular data.
+- Admin-only menu entries and sections are gated on the positive admin flag (`isAdmin`), never on the negation of another role flag; a derived "role X and not admin" boolean is a smell.
 
 ### Props and PropTypes
 
@@ -138,6 +139,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A query-string rule for a list param parses a single value into a one-element array (`if (!Array.isArray(value)) value = [value]`).
 - `data-*` attributes carry values the JS reads (sorting text), never an object repr.
 - Multi-value text inputs split on `,` and `;`.
+- Before flagging a `null` payload key, trace the request builder: shared serializers (`preProcessParameters`) already drop null leaves, only hand-built params need a guard.
 
 ### Validation
 
@@ -348,6 +350,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Status messages speak from the user's side ("Your data is being prepared. We will notify you by email ..."); "by email", not "via email".
 - Source strings are American English ("Program", "Analyze").
 - Setting descriptions say when, not whether ("Specify when a booking reason must be provided.").
+- Before proposing a wording change, grep the module templates and JS for the term the UI already uses for the same people or objects and reuse it ("participants" for registrants).
 
 ### Naming
 
@@ -542,6 +545,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `data-no-qtip` on `title` attributes that must not open a qtip.
 - A cell with an icon next to a name gets `white-space: nowrap`.
 - A management action valid only in some object states keeps its button rendered and disabled in the other states (`disabled` attribute with a tooltip), instead of hiding the whole section.
+- Action-box labels and descriptions name the audience and the subject ("Contact event participants", "Send an email to the event participants about this survey"), never a bare verb ("Email").
 
 ### URLs and data
 

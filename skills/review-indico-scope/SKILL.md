@@ -266,6 +266,8 @@ Two kinds of rules live here: properties the change must have (checked against t
 - Never run a formatter over a whole file: format only the changed selection, disable format-on-save, stage with `git add -p`; a diff that rewraps unrelated code is reverted before review.
 - Never regenerate `.pot` or `.po` catalogs in a PR: extraction and the translation upload run upstream separately, and the line-number churn only creates conflicts.
 - No debug leftovers (`print`, `console.debug`, throwaway routes); stage with `git add -p` to keep them out.
+- A changed user-facing string is drive-by only when the feature left its meaning intact; a description that would become false without the edit is in scope.
+- A rewrap that fixes visibly wrong indentation in a hunk the change touches anyway is reviewed on its merits; ask to revert only when the result is no better than the original.
 
 ### Working the branch (author behavior)
 

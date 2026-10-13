@@ -212,6 +212,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A property nothing reads (`events` on a booking) goes, even when a same-named one existed before; add it back when a consumer appears.
 - Side menu items take a weight no sibling uses (read the module's `_sidemenu_items` first): `-100` for entries that go last (logs), positive weights for the rest.
 - Admin menu entries sit in the section matching their topic (`user_management` for affiliations).
+- When a guard blocks an operation unless a precondition holds (no field placeholders before unlinking), the cleanup inside the operation that handled the blocked case goes too, with its helper and tests.
 
 ## Naming And Comments
 
@@ -255,6 +256,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - No comment between a decorator and its `def`; it goes inside the body.
 - An attribute consumed in another runtime (a regex evaluated by JavaScript) says so in its `#:` doc comment, including what syntax to avoid.
 - A model `url` property with no own endpoint yet uses the parent's locator with a comment, so no unused id lands in the query string.
+- A comment that does not fit at the end of its line goes on its own line above the statement; never one comment split across two trailing comments.
 
 ### Docstrings
 
@@ -265,6 +267,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - Docstring summaries are imperative ("Get the server name", "Strip away the path"), never third person ("Gets", "Strips").
 - A summary that only rephrases the function name is replaced by what the function actually verifies.
 - An RH docstring is one sentence saying what the handler returns or does now ("Return metadata for the requested QR code."); it never lists parameters or option values inline and never describes the earlier design.
+- Docstring summaries of plugin hook stubs may describe when the hook fires ("Hook called after ..."); the imperative-summary rule applies to functions that do something.
 
 ### User-facing wording and casing
 
@@ -328,6 +331,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A list endpoint over event children applies `can_access(session.user)` per item; event access does not imply access to every child.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
 - Links embedding a capability (a ticket link with the registration token) are hidden from roles without it.
+- A model method that only wraps `can_manage(...)` or `is_admin(...)` is removed; callers (schemas, RHs) use `can_manage` directly, and the model sets `is_user_admin` so no caller needs an extra admin check.
 
 ### Arguments and parsing
 
@@ -379,7 +383,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 
 ### URLs and blueprints
 
-- URL prefix follows the audience: `/admin/` only for admin-only RHs; JSON endpoints live under `/api/` on the display side and `/manage/<module>/api/` (named `manage_*_api`) on the management side.
+- URL prefix follows the audience: `/admin/` only for admin-only RHs; JSON endpoints live under `/api/` on the display side and `/manage/<module>/api/` on the management side.
 - The URL names the resource, no `/data` suffix; collection URLs are plural with a trailing slash (`/favorites/`), item URLs append the id; an action endpoint (`/custom-qr-code`) has no trailing slash.
 - Nested API URLs name each level by its resource in plural (`/event/<id>/forms/<id>/registrations/<id>`), never a singular model name followed by an id.
 - URL paths use hyphens (`/update-price`), never underscores.
@@ -395,6 +399,8 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - Per-endpoint cross-cutting behavior (CORS) is declared with an RH class decorator (`@cors`, next to `@json_errors`) that stores a class attribute read by the view-function factory, never with a blueprint-wide URL regex registration; the error handler applies the same options so error responses carry the headers too. A decorator usable with and without arguments takes `(rh=None, /, **options)`.
 - A file tied to an account is served by its own RH (`/user/data-export.zip`, `file.send()`, `NotFound` when absent) under the owner's access check; `signed_download_url` is for contexts without an owner.
 - URL values shared by every endpoint of a blueprint come from `@blueprint.url_defaults`, never repeated in each `url_for`.
+- Action endpoints without a resource payload (link, unlink, toggle, resend) are `POST`, never `PATCH` or `PUT`; `PATCH` only updates fields from a partial payload. Every `data-method` in the templates matches the blueprint `methods`.
+- Endpoint names drop qualifiers the blueprint already implies (`email_survey_send`, not `api_email_event_survey_send`); when URLs move under `/manage/`, re-check the names too.
 
 ### Responses and redirects
 
@@ -437,6 +443,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - Core supports every registered handler of a hook: build the result from all of them, never take `[0]` of the signal results.
 - A state transition performed by hand (a bulk action setting `complete`) still fires the state-change signal and notifies; pass `silent=True` when the generic log entry would mislead and log the action yourself.
 - A signal already sent by the inner method is not sent again by the outer one.
+- A new hook at a point where a core signal already fires extends that signal (a new kwarg on `send()`), never a parallel hook; propose the hook only when the signal cannot carry the data.
 
 ### Handlers
 
@@ -457,6 +464,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - The payload built from registered handlers is a dict keyed by name (`{x.name: x.regex for x in handlers.values()}`), and the key is always present (empty dict when nothing is registered), never added conditionally.
 - A getter built on `named_objects_from_signal` gets an `@signals.core.app_created.connect` handler (`_check_x_handlers`) that calls it once, so duplicate names raise at startup instead of on the first request.
 - When plugin data moves onto an existing signal, trace every early return between the entry point and the `send()` call; a no-op update path that skips the signal silently drops the plugin data.
+- An interceptable hook or signal stub exposed to plugins keeps `**kwargs` so handlers can receive extra context later without a signature change; not an unused parameter.
 
 ## Forms (WTForms)
 
