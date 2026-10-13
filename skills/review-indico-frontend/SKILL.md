@@ -13,12 +13,17 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Search existing components in core and official plugins before writing one (list inputs, country dropdowns, `isoToFlag`); copy and adapt rather than reinvent.
 - Only the HTTP call goes inside `try/catch`; bugs in surrounding code must surface.
 - Explicit `edit ? await axios.patch(...) : await axios.post(...)` over picking a method reference.
-- Dialog open state lives in the parent (`editItem` state); no `cloneElement` trigger wrapping.
+- Dialog open state lives in the parent (`editItem` state); no `cloneElement` trigger wrapping. One `Confirm` for the selected item, with the item's identifier in state, never one rendered per row (a boolean flag opens all of them and the last one wins).
+- One-click actions that are hard to undo get a confirmation dialog; a mode that users repeat (linking several occurrences) is not exited after one success.
+- Inputs are disabled while their data loads (`disabled={loading}`); test with a `time.sleep(3)` in the controller.
+- Component names match what they are (`TemplateManagement`, not `Router`); prefer named exports so the import site shows the real name.
+- Lists of options come from the data the server sends (default templates), never a hardcoded list; the "blank" or default choice goes first.
+- Read values from props and state where they are needed instead of threading them through several method parameters.
 - No flash of empty state between load and render; pass existing data in instead of refetching; verify the loader is visible with a slowed request.
 - After a mutation update local data or show "new entries available, refresh" rather than a full page reload or a refetch that resets the view.
 - Reuse an existing action to reset a flag instead of adding one.
 - Shared helpers move to `indico/web/client/js/react/util/` and get imported; no copies.
-- Selectors keep boolean fallbacks (`staticData.paid || false`) for keys absent in other modes; no unrelated fallback removals.
+- Selectors keep boolean fallbacks (`staticData.paid || false`) for keys absent in other modes; no unrelated fallback removals. Props absent outside a mode are optional with a `null` default, never `isRequired`.
 - Selection state is filtered against the current list so deleted items drop out; name id sets `xIds`.
 - Optional payload keys are omitted (`selected ? {ids: selected} : {}`), never sent as `[]`.
 - Format with biome (unquoted object keys where valid).
@@ -104,6 +109,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Data attributes read from optional objects (`invitation.lock_email`) are guarded; load the page without that object.
 - Attribute continuation lines align with the first attribute; no blank line after a block opener; tag contents indented; no collapsing of multi-line markup into one long line.
 - Plugin output reuses the core look (the standard join button, not a raw URL); pick the best available template hook and note the better one for later.
+- Default document templates carry no provider-specific logic (payment plugin fields) and no "Default" in the title users copy; fonts are generic families (the PDF renderer has no web fonts); labels are statements, not questions ("Add event logo"); an image field over a checkbox when a custom picture is plausible; unused template variables are removed. New data directories are added to the packaging manifest.
 - Default receipt templates: copy field descriptions and options from the existing default template (affiliation toggle, address override), spell-check default texts, offer `{date_range}` with the one-day/multi-day logic plus `{start_date}` and `{end_date}`. Filters are named after what they do (`format_placeholders`), output is marked `| safe` on the expression instead of an `{% autoescape false %}` block.
 - HTML emails: indent normally, `<h3>` for section titles, `<ul>` for lists, `<a>` for links (link the title), no `trim`/`indent` filters or blank-line hacks carried over from the text template.
 

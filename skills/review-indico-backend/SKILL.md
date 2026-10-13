@@ -88,7 +88,12 @@ Check the touched Python files and their callers against every item.
 - Inserted content goes inside `<body>`, with a separator (`<hr>`, `-------------`) between preface and original.
 - Stored records keep what is needed to recover later (filename, content type) and nothing more; key names follow existing Indico names (`storage_backend`, `storage_file_id`).
 - Deduplicate within a request through `flask.g`; unique file names use a uuid, not a content hash (same content saved twice must not fail).
-- 120-character lines; no line breaks that fit on one line; long boolean expressions parenthesized, one operand per line, operator first.
+- 120-character lines; no line breaks that fit on one line; long boolean expressions wrapped in parentheses, one operand per line, `and`/`or` at the end of the line.
+- `Path.read_text()` / `write_text()` over `open()` blocks; `click.Path(path_type=Path)` for CLI paths; dev scripts fail gracefully (`click.secho(msg, fg='red')` then `sys.exit(1)`), and dumped files get `normalize_linebreaks`.
+- Never access `current_app` at import time (module constants); wrap the lookup in a function.
+- `Schema().jsonify(data)` over `jsonify(Schema().dump(data))`.
+- Overlap checks go through `overlaps()` from `indico.util.date_time` with tuples and `inclusive=True`, never hand-written comparisons.
+- Lookups: `Model.get_or_404(id, is_deleted=False)` and `filter_by(date=date)` over `filter(Model.date == date)`.
 - Do not re-implement framework behavior: `IndicoFlaskParser` already strips surrounding whitespace from request data.
 
 ## Naming And Comments
@@ -118,7 +123,12 @@ Check the touched Python files and their callers against every item.
 - Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`. Admin-only overrides of `_check_access` call the base first, then `raise Forbidden`.
 - Parallel families (file/picture upload, display/management) share the same base RH data (`self.field`); the public variant mirrors the management one with `normalize_url_spec` and `skipped_args`.
 - Child objects are loaded through the parent (`Model.query.with_parent(self.event).filter_by(id=...).first_or_404()`), one chained call per line; the model gets a `locator_property` including the parent id (on the concrete subclass when the base lacks it) and the RH declares `normalize_url_spec = {'locators': {lambda self: self.entry}}`.
-- `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending).
+- `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending). `_check_access` holds permission checks only; state validation (already linked, dates do not overlap) raises `BadRequest` from `_process_args`.
+- An action that makes data appear inside another object (linking a booking to an event) requires management rights on that object too. `allow_admin` follows the admin override flag sent by the client (`fields.Bool(load_default=False)` in `query`), never unconditional admin power; the frontend mirrors the same `canLink` logic.
+- Endpoints useful only to managers check the management permission even when the data is not sensitive.
+- User-provided names never become path components: match against a whitelist (`dir.glob('*.yaml')`, compare `stem`) and derive later paths from the matched entry so static analysis sees no tainted path.
+- Path parameters are parsed with `@use_kwargs({...}, location='view_args')` (`fields.Date`), not `dateutil.parser.parse(request.view_args[...])`.
+- RH and endpoint names say what they do (`RHBookingOccurrenceLink`, `booking_occurrence_link`); an `Actions` suffix only when one RH covers several actions.
 - Keys from client-controlled or externally stored data are read with `.get()` so bad input fails with a validation error, not a `KeyError`.
 - References submitted by managers are validated in the schema with `self.context`: same parent (`Model.query.with_parent(parent).filter_by(id=...).first()`), no self-reference, no cycles (walk the chain with a seen set), no disabled or manager-only targets, and a per-type capability flag on the field implementation (`allow_condition`).
 - Deleting or disabling an item others depend on is refused with `NoReportError.wrap_exc(BadRequest(_('...')))`, including the parent section; no silent cleanup of dependents.
@@ -136,7 +146,7 @@ Check the touched Python files and their callers against every item.
 - Signals receive the parsed `data`, not `request.json`; an empty payload after plugins ran is a no-op, not `BadRequest`.
 - Links embedding a capability (ticket link with registration token) are hidden from roles without it.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
-- Schemas limit what is accepted and returned.
+- Schemas limit what is accepted and returned. List APIs returning many rows expose foreign keys (`link_id`, derived by `SQLAlchemyAutoSchema`) rather than nested objects whose access would have to be checked per row; details load lazily from the item dialog. Nesting a new relationship in such a schema is checked with `bin/utils/db_log.py` and gets a `joinedload`.
 - Validation applies identically on every path (import modes, API, UI).
 
 ## Signals
@@ -221,7 +231,7 @@ Check the touched Python files and their callers against every item.
 - Static variant in the format string (meeting vs webinar) for Sentry grouping, `%s` for data; `# noqa: G004` on static f-strings.
 - Expected external rejections handled, not logged as warnings each run.
 - Errors say how to fix; system-level errors (admin disabled a feature) need no i18n. "not allowed" over "not valid"; proofread grammar ("are entered").
-- Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating).
+- Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating). Cross-object actions (a booking linked to an event) are logged on the event with ids and times in `data`, times in the event timezone.
 - Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text; no extra `meta` keys that break existing filters.
 - Log `data` stores useful detail (attachment filenames), not a bare count; key names say what they hold. `data` keys are human-friendly (`'User ID'`); keys without a value (`IP` outside a request) are omitted, not set to `None`.
 - Email log records `alternatives` so re-sending reproduces the original multipart message.

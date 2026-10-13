@@ -35,6 +35,7 @@ Run first. A PR that fails here gets no line-by-line review.
 - Removing a round trip with an external service (a callback endpoint) is welcome; say which API contract changes.
 - A new scope, permission or capability lands on every surface at once: declaration tuples (legacy included), README ("optional, only needed for X"), settings check, tests.
 - Features touching users without an account must specify how those users receive the result.
+- A picker shows only candidates the user can act on (own bookings, matching dates), defaults its filters from the context (the event's room), and labels the entry point precisely ("Link existing booking"). Deferred improvements get a tracking issue linked from the thread.
 - Every surface showing filtered data uses the filtered accessor.
 - Every entry point building the same payload gets the behavior.
 
