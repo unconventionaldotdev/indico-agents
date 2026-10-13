@@ -13,7 +13,7 @@ Run first. A PR that fails here gets no line-by-line review.
 - Limits, thresholds and workarounds need a real example and a frequency; restrictions without a reason (a fixed delimiter set) are dropped.
 - Code that is hard to review or maintain client-side (format sniffing, parsers) stays on the server even when a request is needed.
 - Per-event behavior is an event or room setting; global plugin settings need a reason.
-- Core vs plugin: generic in core, service-specific in the plugin; a core hook needs a core consumer.
+- Core vs plugin: generic in core, service-specific in the plugin; a core hook needs a core consumer. UI that does nothing without a specific plugin is not merged: either opt-in through a template hook variable (hidden by default) or kept in the plugin. A PR waiting on that decision goes to draft and is closed when it stalls.
 - Infrastructure-provided secrets stay optional; the admin UI remains the default.
 - Incremental scope is fine; split follow-ups when asked, fold in small related checks when asked. Prefer the minimal change that avoids a refactor of adjacent code (a refresh hint over re-fetching state).
 - State the expected data volume of the first deployment when scaling is a known limit. Upstream retests list views against a production-size database; a behavior that only works on small instances gets redesigned (server-side filtering, bounded ranges) before merge.
@@ -31,6 +31,7 @@ Run first. A PR that fails here gets no line-by-line review.
 
 - Apply the same fix everywhere the pattern exists, broken or not. A new option on one upload (CSV delimiter) is expected on every upload of that kind; a follow-up PR is acceptable when announced.
 - Close a PR superseded by a newer one instead of leaving both open.
+- A rule with a deliberate exemption (bulk judgment by managers) names it in the setting description or drops the exemption; the wording never contradicts the behavior.
 - An extension point your own earlier PR added and nobody else uses is removed when a new approach makes it unused; upstream keeps no code "unlikely to be ever needed".
 - Removing a round trip with an external service (a callback endpoint) is welcome; say which API contract changes.
 - A new scope, permission or capability lands on every surface at once: declaration tuples (legacy included), README ("optional, only needed for X"), settings check, tests.
@@ -51,7 +52,7 @@ Run first. A PR that fails here gets no line-by-line review.
 
 ## Changelog And Versioning
 
-- Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role only for top-level `indico.conf` keys; nested provider keys are double-backtick literals with their location ("to the identity provider settings").
+- Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); Additions aimed at integrators (a service hook, an API endpoint) go under Internal Changes, worded with the UI's terms ("editing workflow service"). `:data:` role only for top-level `indico.conf` keys; nested provider keys are double-backtick literals with their location ("to the identity provider settings").
 - All contributors go in one ``:user:`a, b, org` `` block; a long-running PR moves its entry to the version it lands in. One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap", "empty files" rather than "zero-byte files"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` lists every issue the PR closes in one role (``:issue:`N, M` ``), grouped per entry when a PR closes issues for two features; numbers are verified against the linked issue; no space before a comma in role lists.
 - A follow-up landing in the same release edits the existing entry (wording, `:issue:`, `:pr:` lists) instead of adding a second one; check the numbers land on the right entry.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them. A PR that extends a feature and adds a new admin option gets two entries (extend the existing one, add one for the option), both wrapped at the surrounding line length.
@@ -66,7 +67,7 @@ Run first. A PR that fails here gets no line-by-line review.
 - No `MANIFEST.in` with hatchling.
 - New contrib plugins added to `build.yml` and `pypi.yml` choice lists after the blank option.
 - Plugin names say what they add beyond core (`affiliation_extras`), propagated to directory, package, blueprint, entry point.
-- No local workarounds upstream (`--basetemp`, macOS paths).
+- No local workarounds upstream (`--basetemp`, macOS paths). Tooling from the Indico organisation (`unbeheader`) is installed unpinned in CI.
 - Compatibility shims carry `XXX` plus the awaited upstream PR; removed once merged.
 - Tooling: `make` alone shows help; Makefiles use 8-wide tabs in `.editorconfig`; CI keeps its own commands when it needs different flags.
 

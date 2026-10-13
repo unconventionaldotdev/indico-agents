@@ -30,14 +30,18 @@ Check the touched Python files and their callers against every item.
 - Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`. Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict; query-string choices are an `IndicoStrEnum` with `auto()`, never a nested `(Enum)` with int values; values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
 - A workaround for surprising framework behavior (`form.x.enum[form.x.data]`) is a bug to trace with a debugger and fix at the source (`strip_whitespace` must not convert str enums), not a line to keep.
 - Bulk endpoints whitelist the compatible actions in the webargs validation (`fields.Enum(..., validate=validate.OneOf([...]))`), not with early returns in the body; `fields.Enum`, never `marshmallow_enum.EnumField`. Items the bulk action skips are reported, not silently dropped.
-- Remove methods and imports a refactor left unused.
+- Remove methods and imports a refactor left unused. Code is not moved within a file while it is changed (a moved block hides the real diff); when inheritance order forces a move, say so in the PR.
+- Classes used inside one method are defined at module level, public (`AccompanyingPerson(PersonMixin)`) when a plugin may need them; names come from `PersonMixin`, never `f'{first} {last}'`.
+- Values compare against the explicit set of expected members (`['first_last_upper', 'last_first_upper'].includes(fmt)`), never a substring of their name, so a search for the member finds every consumer.
 - Functions that never touch `self` go to `util.py`.
 - One definition point for shared infrastructure (one `cache` classproperty, one permission tuple constant, one `is_gravatar` enum property instead of repeated membership checks).
 - Several handlers differing only in a parameter collapse into one with `any(...)`.
 - Extend the existing mechanism before adding one (`PERMISSION` accepting a tuple instead of new mixins); `isinstance(x, (tuple, set, list))` for such checks.
 - Module constants right after imports (or on the API client class), never inside the plugin class; single-use values inlined with a short comment.
 - `cached_classproperty` when class-level access is enough.
-- Plain defaults in the signature; `None` plus `if x is None` only for mutable defaults and translated strings.
+- Plain defaults in the signature; `None` plus `if x is None` only for mutable defaults and translated strings. No mutable default anywhere (`= {}`, `load_default=[]`): `None` plus the check, or `required=True` when every caller passes the value.
+- `d.get(key, default)` replaces a membership check followed by indexing; `.get(key)` already yields a falsy `None`, so no `.get(key, False)`.
+- A loop that searches for the first match returns from inside the loop; the fallback follows the loop.
 - New optional parameters are keyword-only (`*, flag=True`); check no caller passes the neighbours positionally and make those keyword-only too.
 - Argument order: the object acted on first (`add_users_to_group(group, users)`), then the rest.
 - Helpers do their own difference (`users - group.members`) so callers cannot misuse them; the name must not promise more than the body does.
@@ -177,7 +181,10 @@ Check the touched Python files and their callers against every item.
 - Narrowing signals mutate the passed list in place; `values_from_signal(skip_none=True)` already drops `None`.
 - Docstrings state sender, kwargs, return and combination semantics.
 - Signals live in their topic module (`signals/affiliations.py`), named like the existing family.
-- Core hooks need a core consumer.
+- Core hooks need a core consumer; a signal already declared and documented stays even while nothing consumes it.
+- Signals pass the whole object (`tpl_data`) rather than a slice of it; the handler picks what it needs.
+- A signal that can short-circuit a check documents the contract: `True` skips, `False` denies with a generic message, `None` runs the default, `False` wins over `True`, custom messages come from raising `Forbidden` in the handler. "Any return value skips the check" is rejected.
+- Security checks (password strength, pwned passwords) are never `@make_interceptable`; extra checks go through the signal they already fire, weakening them is not offered.
 - Plugins register handlers with `self.connect(signal, handler, sender=...)` in `init()`, never module-level `connect_via`.
 - Signal kwargs have no defaults: an absent kwarg is the normal case, the special case is an explicit `silent=True` (or `no_log`), never `log=True` that every handler must default itself.
 - A state transition performed by hand (a bulk action setting `complete`) still fires the state-change signal and notifies; pass `silent=True` when the generic log entry would mislead and log the action yourself.
@@ -185,6 +192,7 @@ Check the touched Python files and their callers against every item.
 
 ## Forms (WTForms)
 
+- Conditional validators use `inject_validators(self, 'field', [DataRequired()])` before `super().__init__()`; appending to `field.validators` afterwards may only mark the field required in the UI.
 - Dependent fields: `HiddenUnless('toggle', preserve_data=True)` plus `DataRequired` when empty makes no sense.
 - No `Optional()` when it is the only validator.
 - Uniqueness checks scope to enabled items and run again on re-enable; case-insensitive via `db.func.lower`.
@@ -244,7 +252,7 @@ Check the touched Python files and their callers against every item.
 - New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).
 - Switching stored text from plain to HTML uses `RenderModeMixin` with a `render_mode` column (legacy rows stay plain text, new rows HTML), never a destructive data migration.
 - Configuration the server must query or validate (references to other rows) lives in real columns with foreign keys, not inside a JSON `data` blob.
-- Mutating a JSON column on a persisted object needs `flag_modified(obj, 'data')`; `db.session.add()` is redundant for objects already in the session. Build children with `parent=section`, not `parent_id=section.id` plus a flush.
+- Data read from a model's JSON column is never mutated while consumed (no change detection means silent persistence on the next flush); build a filtered copy. Mutating a JSON column on a persisted object needs `flag_modified(obj, 'data')`; `db.session.add()` is redundant for objects already in the session. Build children with `parent=section`, not `parent_id=section.id` plus a flush.
 - Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist; `export.yaml` orders the rows topologically so idrefs resolve on import.
 - Count queries on a large event before and after a list change; a per-row property that touches a relationship (latest comment date) turns a fixed number of queries into one per row. Compute it in SQL as a `column_property` with a correlated scalar subquery, registered in a module-level `@listens_for(orm.mapper, 'after_configured', once=True)` function (never inside the class), `deferred=True` plus `undefer()` when few views need it. A real column updated on every write is the fallback.
 - A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
@@ -269,6 +277,9 @@ Check the touched Python files and their callers against every item.
 
 ## Config And Startup
 
+- A cheap setting read goes inline in the condition (`if editing_settings.get(self.event, 'service_url'):`), no local variable.
+- A wrapper that rebinds a proxy forwards every constructor argument (`acl_names`, `converters`) and gets a test covering ACLs and converted values; a fix to stored setting values ships a migration mapping both directions.
+- Capability flags of multipass objects (`supports_member_list`) are honoured; the section stays with a `message_box('warning')` saying why the data is unavailable instead of disappearing.
 - Plugin keys under `PLUGIN_<NAME>_<KEY>`; collisions raise, never warn.
 - No plugin imports while loading config (mappers not ready); defer to `IndicoPlugin.init()`, validate in `IndicoConfig.validate`.
 - Config-provided credentials disable and mask the matching admin UI fields; all credentials of one integration configurable the same way; file-based secrets optional.
@@ -277,6 +288,7 @@ Check the touched Python files and their callers against every item.
 
 ## Logging, Flashing, Errors
 
+- Two messages mean two `flash()` calls behind an `if`, not one call with a conditional expression. A bulk operation that cannot decide for some items (several review tracks, no unique candidate) skips them and flashes a warning with the count.
 - No `flash()` in service methods or signal handlers (cloning, Celery). Log instead.
 - Static variant in the format string (meeting vs webinar) for Sentry grouping, `%s` for data; `# noqa: G004` on static f-strings.
 - Expected external rejections handled, not logged as warnings each run.
@@ -296,6 +308,9 @@ Check the touched Python files and their callers against every item.
 
 ## External Services And Performance
 
+- An external service may answer with an empty body; parse with the schema only `if resp.text`.
+- Accepted query spam (a `can_manage` per template) gets an `# XXX` comment with the reasons it is acceptable (admins short-circuit, bounded row count).
+- Read-only endpoints are `GET`; `POST` only for mutations or large payloads (lists of selected ids).
 - Check both members of parallel API families (meeting and webinar).
 - Match external types exactly; normalize with a quirk comment.
 - No O(n) external sweep per request: daily Celery task, scoped cache with TTL above the interval, per-item fallback.
