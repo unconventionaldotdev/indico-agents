@@ -25,7 +25,9 @@ Check the touched Python files and their callers against every item.
 - Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment.
 - Short names everywhere (`all_tags`, not `all_tags_must_be_present`); `tpl` for template variables.
 - New public symbols are re-exported in the module `__init__` and listed in `__all__`.
-- Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`.
+- Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`. Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict; values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
+- A workaround for surprising framework behavior (`form.x.enum[form.x.data]`) is a bug to trace with a debugger and fix at the source (`strip_whitespace` must not convert str enums), not a line to keep.
+- Bulk endpoints whitelist the compatible actions in the webargs validation (`fields.Enum(..., validate=validate.OneOf([...]))`), not with early returns in the body; `fields.Enum`, never `marshmallow_enum.EnumField`. Items the bulk action skips are reported, not silently dropped.
 - Remove methods and imports a refactor left unused.
 - Functions that never touch `self` go to `util.py`.
 - One definition point for shared infrastructure (one `cache` classproperty, one permission tuple constant, one `is_gravatar` enum property instead of repeated membership checks).
@@ -149,7 +151,8 @@ Check the touched Python files and their callers against every item.
 - `markupsafe.escape` on user strings inside `ValidationError`.
 - Forms referencing external accounts must load when the account disappeared; failing to save is fine.
 - Never mutate `field.data` in `validate_*`; normalize in `process_formdata` or `post_validate`.
-- Field definitions sit with the other fields, one kwarg per line when long; drop descriptions that restate the label.
+- Field definitions sit with the other fields, one kwarg per line when long; drop descriptions that restate the label. Keep the label on fields whose label is not rendered when sibling forms set it. Order fields by how the user fills them (file, delimiter, then switches) and keep the ordering tuple in sync.
+- Single-use message strings are inlined in the `flash()` call, not exposed as properties.
 - Values the client never changes are form constructor kwargs (`def __init__(self, *args, event, mode, **kwargs)`), not hidden fields round-tripped through the browser.
 - Relationships are edited through query fields (`IndicoQuerySelectMultipleCheckboxField`, `IndicoQuerySelectMultipleTagField`) so `populate_obj` assigns them; no id lists resolved by hand in the RH. Relationships already exclude soft-deleted rows; sort with `natural_sort_key`.
 - "Nothing selected means no restriction" is stated in the description; labels stay short enough not to wrap ("Filter by forms").
@@ -185,6 +188,7 @@ Check the touched Python files and their callers against every item.
 - Configuration the server must query or validate (references to other rows) lives in real columns with foreign keys, not inside a JSON `data` blob.
 - Mutating a JSON column on a persisted object needs `flag_modified(obj, 'data')`; `db.session.add()` is redundant for objects already in the session. Build children with `parent=section`, not `parent_id=section.id` plus a flush.
 - Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist; `export.yaml` orders the rows topologically so idrefs resolve on import.
+- Count queries on a large event before and after a list change; a per-row property that touches a relationship (latest comment date) turns a fixed number of queries into one per row. Compute it in SQL as a `column_property` with a correlated scalar subquery, registered in a module-level `@listens_for(orm.mapper, 'after_configured', once=True)` function (never inside the class), `deferred=True` plus `undefer()` when few views need it. A real column updated on every write is the fallback.
 - A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
 - Multi-line queries: `(` on its own line, `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
 - `.one()` on lookups that cannot miss (soft-deleted rows still exist); no defensive `- {None}` or `or {}` without a reproducible case, and a comment when one exists.
@@ -255,7 +259,8 @@ Check the touched Python files and their callers against every item.
 - Features needing extra provider permissions get two switches: plugin-level `allow_x` (validated against the granted scopes at save time) and per-room `x` shown only when allowed; both default off. Related provider recommendations go in the description, not enforced. Link to the README section instead of listing scopes in the description.
 - Settings dialogs with several topics use `_fieldsets` on the form and `jsonify_form(form, fieldsets=...)`.
 - Walk state machines with payment (approve, pay, change, approve again) before claiming correctness.
-- Warn users before surprising consequences.
+- Warn users before surprising consequences. Images are never scaled up silently: flash a warning with the recommended width when an upload or a setting change leaves the current image outside the range, and state the recommendation on the management page.
+- An action that needs an explanation for its recipient (request changes) cannot be fired without a comment; the bulk path gets the same dialog as the single one.
 - Defaults only where they are what the user would choose.
 - Keep source formats when converting data (PNG stays PNG).
 - Every entry point building the same payload gets the behavior (user form, manager on-behalf, bulk).
