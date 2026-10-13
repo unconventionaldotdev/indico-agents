@@ -13,6 +13,8 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Side-effect fixtures (`db`, `smtp`, `request_context`) in `@pytest.mark.usefixtures`, never as unused arguments; same for parametrize values consumed only by fixtures.
 - No imports from other test modules; shared setup is a factory fixture in `fixtures.py`.
 - A module helper taking `db` and the plugin is a fixture in disguise.
+- No fixture that wraps an existing model method (`room.set_attribute_value`). Factory fixtures accept `**kwargs` and pass them to the model. Locals are named after the object they hold (`sess`, not an `entry` copied from a sibling fixture).
+- Removing or renaming a core fixture (or its `pytest_plugins` import) breaks plugins that use it; grep the plugin repos and open the companion PR.
 - Fixtures touching caches or globals clean up before and after.
 - No `request_context` + `session.set_session_user` when the code can run without a request; make the code tolerate it instead.
 - Long symbol lists become module imports (`reglists.RHRegistrationEdit`).

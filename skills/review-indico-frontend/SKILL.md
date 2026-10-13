@@ -62,7 +62,9 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Prices are formatted locale-aware through one shared formatter that takes the item (so price and currency travel together), never `price + ' ' + currency` or `toFixed(2)`.
 - Legacy jQuery code uses `$T.gettext(...)`, not `$T(...)`, and arrow functions; prefer `data-*` attributes on the trigger over an `ajaxDialog({...})` call.
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
-- Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range).
+- Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range). A validator handles `undefined` itself (early return in `maxLength`) instead of every call site guarding `value !== undefined &&`.
+- After renaming a key or enum member (`contribution` to `contrib`), grep every TypeScript consumer; the compiler does not catch string-keyed lookups.
+- New TypeScript code questions each `moment` use; native `Date` and `Intl` cover most needs.
 - Conditionally rendered `Final*` fields unregister on unmount and lose their value; hide with CSS or keep mounted.
 - Identifier inputs reject spaces and uppercase; help text states the real uniqueness scope.
 - Dialogs autofocus the first input; related short fields share a row.
@@ -85,6 +87,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 ## Jinja
 
 - Reuse core macros (`format_event_date`) before hand-rolling.
+- Shared templates (`forms/_form.html`) never branch on one form's id; page-specific behavior lives with that page. No `XMLHttpRequest`: `indicoAxios` in JS modules, `fetch()` in the rare inline script, and preferably no inline request code at all.
 - `{{- x -}}` where output is inline; `data-no-qtip` on `title` attributes that must not open a qtip.
 - `url_for_plugin('.endpoint')` inside blueprints; shared URL values via `@blueprint.url_defaults`.
 - Template names describe the page; shared markup moves to a macro partial (`_name.html`).

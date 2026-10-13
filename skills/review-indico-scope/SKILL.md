@@ -43,7 +43,7 @@ Run first. A PR that fails here gets no line-by-line review.
 - Proof: how it was tested, on what data, screenshots for UI; measurements for performance (and be ready to share raw data privately).
 - "Running in production since ..." when true.
 - No generic feature bullets that carry no information.
-- Cross-link companion core and plugin PRs; keep the description current after review changes.
+- Cross-link companion core and plugin PRs (the plugin description references the core PR as `indico/indico#N` or by URL so CI tests against that branch); keep the description current after review changes.
 - Enable "allow edits by maintainers".
 
 ## Changelog And Versioning
