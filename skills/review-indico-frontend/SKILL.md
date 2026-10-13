@@ -65,6 +65,9 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range). A validator handles `undefined` itself (early return in `maxLength`) instead of every call site guarding `value !== undefined &&`.
 - After renaming a key or enum member (`contribution` to `contrib`), grep every TypeScript consumer; the compiler does not catch string-keyed lookups.
 - New TypeScript code questions each `moment` use; native `Date` and `Intl` cover most needs.
+- Dates and times are formatted locale-aware: `Intl.DateTimeFormat` with `locale.replace('_', '-')` and `formatRange` for ranges, or the existing helpers (`serializeDateTimeRange`); never hardcoded `ha` or 24h formats. Components that format dates render only after the locale is initialized.
+- Client-side search over lists spreads the values into `searchableFields` (`...persons`), never `join('')`, which matches across concatenated names.
+- Generalizing a behavior into a shared component (`FinalDropdown` search) means auditing every usage: option `text` may be missing or not a string; fall back to the default behavior rather than disabling the feature per consumer. Check the library's own option (`deburr`) before writing the logic.
 - Conditionally rendered `Final*` fields unregister on unmount and lose their value; hide with CSS or keep mounted.
 - Identifier inputs reject spaces and uppercase; help text states the real uniqueness scope.
 - Dialogs autofocus the first input; related short fields share a row.

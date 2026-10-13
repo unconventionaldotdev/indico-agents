@@ -60,6 +60,10 @@ Check the touched Python files and their callers against every item.
 - Do not store uploads that are consumed immediately; process the stream and return the data instead of `UploadFileMixin` plus state kept in `validate_file`.
 - Exercise every caller of a changed shared util (exports from other modules, objects without an ACL) before merging.
 - One query for the set, then membership in Python; never a query per candidate inside a loop.
+- Eager loading is measured on a large event, per list: `selectinload` when the relationship multiplies the parent rows (many persons per contribution), `joinedload` when the child is the queried object. Removing a relationship filter (`primaryjoin`) means auditing every consumer of that relationship.
+- Debug leftovers (`print`, `console.debug`) never reach a PR; stage with `git add -p`.
+- Extend the existing ACL helper (`get_manager_list(permission=..., explicit=...)`) instead of writing a near copy. Specific permissions are not inherited, so `recursive=True` combined with `permission` or `explicit` is rejected or ignored; notification audiences use `explicit=True`; defaults are not passed explicitly.
+- Service integrations get a flag in the response (`reset`) instead of a callback endpoint; a service-only endpoint checks `self.is_service_call`.
 - Do not catch unexpected external errors just to log them; an uncaught exception is more informative and crashes nothing. Catch only the client's exception class (`HTTPError`, `StorageError`), never bare `Exception`; wrap only the call that can raise, not the surrounding block.
 - `assert` for states that must never happen (template missing `<body>`), not a warning log.
 - `match` with class and sequence patterns for type dispatch over `isinstance` chains.
@@ -108,7 +112,7 @@ Check the touched Python files and their callers against every item.
 - Override `_check_access` (super first) so errors name the right object; never `_check_management_permission` for object-level checks.
 - Shared `PERMISSION` tuples live on an intermediate base class; subclasses never repeat an inherited `PERMISSION`.
 - Every endpoint that lists, counts, exports or acts on the same objects applies the same filter and gate; feature-gated endpoints stay closed when the gate is off.
-- Narrow permissions grant nothing beyond their purpose: logs, exports, configuration, legacy APIs stay with full management.
+- Narrow permissions grant nothing beyond their purpose: logs, exports, configuration, legacy APIs stay with full management. Walk every flow as the new role: undo popups and bulk buttons often post to endpoints of another module, generic email endpoints still require full management, "create new session/track" and publish toggles stay hidden. A permission name is valid only on the class that declares it (`can_manage(user, permission='contributions')` raises on a `Contribution`).
 - New helper endpoints start admin-only; loosen later when another consumer appears.
 - Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')` with the kwarg named explicitly (never `**kwargs`), also instead of `Model.get(request.view_args[...])`; always call the base `_process_args` even when it is a no-op.
 - Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`. Admin-only overrides of `_check_access` call the base first, then `raise Forbidden`.
@@ -170,6 +174,7 @@ Check the touched Python files and their callers against every item.
 - `ValidationError(_('msg'), 'field')`; named placeholders in multi-value strings.
 - `data['x']` for fields with `load_default`.
 - Free-form metadata is `fields.Dict(keys=fields.Str())`; `null` rejected, empty is `{}`.
+- `fields.Pluck(RelatedSchema, 'attr', many=True)` over a `fields.Method` that maps a relationship by hand.
 - `load_default=lambda: []` for mutable defaults; `@pre_load` hooks copy `data` before popping keys.
 - Backend regex validation mirrors the frontend one.
 
@@ -198,6 +203,7 @@ Check the touched Python files and their callers against every item.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
 - Partial-index `WHERE` clauses must be justified.
 - Iterate enum members, never `range` over their values; SQL in triple-quoted strings indented under the call.
+- Data migrations never hardcode the system user id; use `(SELECT id FROM users.users WHERE is_system)`.
 - Uniqueness scope matches the product: form or event level, never instance-wide constraints that collide on large installations.
 - One query per bulk sync, not per item.
 
@@ -254,12 +260,14 @@ Check the touched Python files and their callers against every item.
 - Standard primitives for hardening: `hmac.compare_digest`, `secrets`; no signatures in logs.
 - Scanner findings need a proof of concept or a reason; cheap hardening (`parseInt` on an id from the URL) is still accepted.
 - Signed file links via `File.signed_download_url` and `RHFileDownload`; check `UploadFileMixin` before writing an upload handler.
+- Anything that signs values inside `url_for` (a URL converter) must be opt-in (`_sign=True` kwarg stored on `g`), because the URL signing endpoint builds URLs for arbitrary endpoints; a test asserts that endpoint rejects underscored args. Cache-busting slugs in URLs stay.
+- Picture sizes and similar magic numbers are module constants; `A if cond else B` without a negated condition.
 
 ## Behavior Changes
 
 - Changes to existing workflows are opt-in per form, off by default, or narrowed to the unambiguous case.
 - Features needing extra provider permissions get two switches: plugin-level `allow_x` (validated against the granted scopes at save time) and per-room `x` shown only when allowed; both default off. Related provider recommendations go in the description, not enforced. Link to the README section instead of listing scopes in the description.
-- Settings dialogs with several topics use `_fieldsets` on the form and `jsonify_form(form, fieldsets=...)`.
+- Settings dialogs with several topics use `_fieldsets` on the form and `jsonify_form(form, fieldsets=...)`; the attribute is always `_fieldsets`, and a macro argument that duplicated it is removed once the form carries the data.
 - Walk state machines with payment (approve, pay, change, approve again) before claiming correctness.
 - Warn users before surprising consequences. Images are never scaled up silently: flash a warning with the recommended width when an upload or a setting change leaves the current image outside the range, and state the recommendation on the management page.
 - An action that needs an explanation for its recipient (request changes) cannot be fired without a comment; the bulk path gets the same dialog as the single one.
