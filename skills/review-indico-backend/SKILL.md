@@ -53,6 +53,7 @@ Check the touched Python files and their callers against every item.
 - Dialog triggers are declarative (`data-ajax-dialog`, `data-href`, `data-method`, `data-title` built with `html_params` in the form constructor, where the request context is available), not JS in the template setting `data-href` at runtime.
 - `form.identifier.data`, not `form.data['identifier']` (builds the whole dict for one value); `user.local_identity`, not `next(iter(user.local_identities))`.
 - A branch unreachable after an earlier `isinstance(exc, (A, B))` is a bug, not dead code to keep.
+- A setting the UI enforces is enforced server-side too, and the create and edit paths behave the same.
 - Behavior the admin may want either way (verbose vs generic login errors) is a config option defaulting to the current behavior; never set it unconditionally, never fail startup when it is missing.
 - Security code never guesses (which form field is the identifier); when the information is not available, add an explicit attribute upstream (in the library) and wait for the bump.
 - A global rate limiter check runs after form validation, never in a way that locks every user out once hit. Failed lookups of a username log at `info`, wrong passwords at `warning`.
@@ -60,7 +61,8 @@ Check the touched Python files and their callers against every item.
 - Do not store uploads that are consumed immediately; process the stream and return the data instead of `UploadFileMixin` plus state kept in `validate_file`.
 - Exercise every caller of a changed shared util (exports from other modules, objects without an ACL) before merging.
 - One query for the set, then membership in Python; never a query per candidate inside a loop.
-- Eager loading is measured on a large event, per list: `selectinload` when the relationship multiplies the parent rows (many persons per contribution), `joinedload` when the child is the queried object. Removing a relationship filter (`primaryjoin`) means auditing every consumer of that relationship.
+- Eager loading is measured on a large event, per list: `selectinload` when the relationship multiplies the parent rows (many persons per contribution), `joinedload` when the child is the queried object; `selectinload` for a to-one on a long list keeps the main query small. A `load_only(...)` must include the FK columns (`own_room_id`) of relationships read later, or the eager load silently falls back to one query per row. Removing a relationship filter (`primaryjoin`) means auditing every consumer of that relationship.
+- Display names come from the model's canonical property (`room.full_name`), never rebuilt from parts at the call site.
 - Debug leftovers (`print`, `console.debug`) never reach a PR; stage with `git add -p`.
 - Extend the existing ACL helper (`get_manager_list(permission=..., explicit=...)`) instead of writing a near copy. Specific permissions are not inherited, so `recursive=True` combined with `permission` or `explicit` is rejected or ignored; notification audiences use `explicit=True`; defaults are not passed explicitly.
 - Service integrations get a flag in the response (`reset`) instead of a callback endpoint; a service-only endpoint checks `self.is_service_call`.
@@ -106,7 +108,10 @@ Check the touched Python files and their callers against every item.
 - `# XXX` for external quirks; a knowingly rough approach gets a one-line why-it-is-safe comment.
 - Wording matches the module (the Zoom plugin says "Zoom meeting"); user-facing labels are plain words ("Short name / abbreviation", not "Code").
 - Docstrings: Sphinx roles (`:class:`, `:exc:`, `:data:`), double-backtick literals. Every documented `:param:` exists in the signature; generic helpers (`render_breadcrumbs`) get no object-specific params.
-- Leftovers of a discarded approach (an unused class attribute, a docstring param, a `return` on an unused value) are removed before review.
+- Leftovers of a discarded approach (an unused class attribute, a docstring param, a `return` on an unused value) are removed before review. A property nothing reads (`events` on a booking) goes, even when a same-named one existed before; add it back when a consumer appears.
+- Comments and strings follow a rename ("booking occurrences" after the link moved to occurrences). Module names keep their capitalization ("Room Booking occurrence(s)"), common nouns stay lowercase; menu titles name the process ("Room booking"), not a count.
+- A model `url` property with no own endpoint yet uses the parent's locator with a comment, so no unused id lands in the query string.
+- A recurring object is created only when the span needs it (`RepeatFrequency.NEVER` for a single day); defaults never force repetition. An enum whose member means "off" may use `0`.
 
 ## Imports
 
@@ -194,7 +199,11 @@ Check the touched Python files and their callers against every item.
 ## Schemas (marshmallow)
 
 - `@validates_schema(skip_on_field_errors=True)`, written explicitly even though default.
-- `ValidationError(_('msg'), 'field')`; named placeholders in multi-value strings.
+- `ValidationError(_('msg'), 'field')`; named placeholders in multi-value strings. A rule depending on another field or on a setting (reason required unless linked) lives in `@validates_schema` on the schema, never on an RH base class; on edit it reads the object from `self.context['booking']`, on create the payload (`booking.links if booking else data.get('link_id')`), never both.
+- Settings schemas loaded with `partial=True` never mark fields `required=True`.
+- Optional text fields take `load_default=''` or `None` and the client omits empty values (`nullIfEmpty`, `onlyIf`); no regex to allow "empty or 3+ chars", and a min-length validator that nobody needs is dropped.
+- Nested objects the viewer may not access are blanked in `@post_dump(pass_original=True)` (`data['object'] = None` after `can_access`), not filtered in the RH; the client renders "Details hidden - no access". Nested schemas pass `only=(...)`. A summary endpoint never embeds details of linked objects (titles leak); details load from their own endpoint.
+- Dotted attributes: `NaiveDateTime(attribute='occurrence.start_dt')`, not a `Function(lambda ...)`. The enum type of a `state` field is the owning model's enum. Fields and `HACK` getattr workarounds the client no longer reads are removed.
 - `data['x']` for fields with `load_default`.
 - Free-form metadata is `fields.Dict(keys=fields.Str())`; `null` rejected, empty is `{}`.
 - `fields.Pluck(RelatedSchema, 'attr', many=True)` over a `fields.Method` that maps a relationship by hand.
@@ -211,6 +220,7 @@ Check the touched Python files and their callers against every item.
 - `column_property` changes that back an index update the index in `upgrade` and `downgrade`; `indico db_diff` must be empty.
 - Pick NULL or empty string, not both; NULL gets `CheckConstraint("col != ''")`.
 - Association tables declare `ondelete='CASCADE'` on both foreign keys; the closing parenthesis of `op.create_table` sits on the last argument line.
+- Moving a relation (links from reservations to occurrences) renames the existing table instead of create plus drop: rename table, add the new column with its FK and index, migrate data with `UPDATE ... FROM`, drop the old column; rename the sequence, PK, indexes and constraints to the new table name with `op.execute('ALTER ...')`, mirrored in `downgrade`. Until the data migration exists in both directions, destructive steps stay commented out so testers keep their database. Reflected downgrades use `PyIntEnum`, not native PG types.
 - `index=True` on the column instead of separate `op.create_index`; `downgrade` does not drop indexes of a table it drops. Enum copies inside migrations match the model enum member for member. Constraints exist in both migration and model, or in neither (drop a uniqueness check when duplicates are harmless). Blank line after the title in the revision docstring.
 - Search over text columns: prefix match over substring, skip words under 3 chars, GIN/FTS index in the migration, results cached with `memoize_redis(ttl, versioned=True)` and the version bumped on writes.
 - New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).

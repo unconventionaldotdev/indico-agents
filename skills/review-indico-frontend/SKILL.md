@@ -26,7 +26,14 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - After a mutation update local data or show "new entries available, refresh" rather than a full page reload or a refetch that resets the view.
 - Reuse an existing action to reset a flag instead of adding one.
 - Shared helpers move to `indico/web/client/js/react/util/` and get imported; no copies.
-- Selectors keep boolean fallbacks (`staticData.paid || false`) for keys absent in other modes; no unrelated fallback removals. Props absent outside a mode are optional with a `null` default, never `isRequired`.
+- Selectors keep boolean fallbacks (`staticData.paid || false`) for keys absent in other modes; no unrelated fallback removals. Props absent outside a mode are optional with a `null` default, never `isRequired`; props a connected selector always supplies are `isRequired` with no `defaultProps` entry. PropTypes match the value (`string` for a string enum, not `bool`); a PropTypes warning is fixed by widening the type at the component, not silenced.
+- Optional text fields never send `''`: `nullIfEmpty` on the field, `onlyIf` in the serializer, `reason || undefined` when the edit payload is built by hand (a nicer validation error than "field cannot be null").
+- Sections with no value are not rendered (`{reason && this.renderReason(reason)}`); no empty boxes.
+- `FinalDropdown` gets only non-default props (no `hideValidationError`, `multiple={false}`, `search={false}`). Setting descriptions say when, not whether ("Specify when a booking reason must be provided.").
+- Lists sort with natural order: `new Intl.Collator(undefined, {numeric: true, sensitivity: 'base'})` and `collator.compare`.
+- A value-to-value mapping is an object lookup (`{category: 'categoryId', ...}[groupBy]`), not a `switch`; `if (!attr) throw` when validation is wanted.
+- Dates from the server are formatted with `toMoment(x).format('L')`, never a raw date string. Literal punctuation in JSX is text (`(`), not `{' ('}`; check braces that leak into the output (`{'}'}`).
+- An icon that looks like an expander expands something; struck-through text for invalid items; `overflowY: 'auto'`, not `scroll`.
 - Selection state is filtered against the current list so deleted items drop out; name id sets `xIds`.
 - Optional payload keys are omitted (`selected ? {ids: selected} : {}`), never sent as `[]`.
 - Format with biome (unquoted object keys where valid).
@@ -115,7 +122,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `_()` inside macro arguments (`{% trans %}` does not work there); plugin gettext in plugins.
 - Every counter or list uses the same filtered accessor.
 - Calls to action and links match the viewer's rights; a restricted role sees no link it cannot follow.
-- A disabled button explains why in its own `title`, not through a separate info icon; every visible string, button text included, goes through `{% trans %}`.
+- A disabled button explains why in its own `title`, not through a separate info icon; every visible string, button text and table headers included, goes through `{% trans %}`. A cell with an icon next to a name gets `white-space: nowrap`.
+- Links to objects use their named endpoint (`url_for('rb.booking_link', booking_id=...)`), never a path plus `modal=` query string.
 - `url_for` with the locator object only (`url_for('.resend', entry)`), no redundant parent argument.
 - Data attributes read from optional objects (`invitation.lock_email`) are guarded; load the page without that object.
 - Attribute continuation lines align with the first attribute; no blank line after a block opener; tag contents indented; no collapsing of multi-line markup into one long line.
