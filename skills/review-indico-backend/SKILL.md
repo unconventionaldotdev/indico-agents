@@ -23,6 +23,11 @@ Every item below comes from a finding raised in upstream review of contributor P
 - **Work without a request context.** Service functions that may run from the shell or Celery guard `session.user if session else None` instead of assuming a request.
 - **Keep subclasses in sync.** A new parameter on `create_mm_field` also lands on `InvalidRegistrationFormField.create_mm_field` and every other override. Grep the method name before finishing.
 - **Plugin compatibility shapes the API.** Passing a new flag through `self.management` instead of a new `get_validators` argument is accepted because the latter "would be much more likely to break plugins adding custom fields". When a core signature is used by plugin subclasses, prefer an attribute or a keyword with a default.
+- **Index keys that always exist.** `data['content_type']`, `attachment['filename']`: "This key always exists." A `.get()` with a fallback on a key the code itself wrote hides bugs and invents states that never occur. When a key is genuinely optional and never holds a falsy junk value, `.get('x', [])`, not `.get('x') or []`.
+- **Walrus in comprehensions** to avoid calling the getter twice: `{cid: url(idx) for idx, att in enumerate(atts) if (cid := att.get('content_id'))}`.
+- **Functions that never touch `self` go to `util.py`**, not into the request handler class.
+- **Use `locator`.** Models that are addressed by URL get a `@locator_property` and callers write `url_for('logs.event_email_attachment', self, attachment_id=...)` instead of spelling out `event_id=..., log_entry_id=...` at every call site.
+- **Reuse the core file plumbing.** Signed links for a `File` come from `signed_download_url` and `RHFileDownload`; a custom token scheme with user matching "should be easily possible" to delete. Check `UploadFileMixin` before writing an upload handler, and explain concretely when it does not fit (data key, missing hook); the explanation is accepted ("Fine to leave it as is then").
 - **Line length is 120.** A statement that fits in 120 characters stays on one line; "Remove unnecessary line break" is a real reviewer commit. Long boolean expressions use the parenthesized form with one operand per line and the operator at the line start.
 
 ## Naming And Comments
@@ -35,6 +40,8 @@ Every item below comes from a finding raised in upstream review of contributor P
 - No underscored import aliases (`import hmac as _hmac`): "Why are these imports underscored?"
 - Comments state facts that hold. A comment implying a limitation ("Zoom only honors this when the meeting was originally created with ...") gets "What does this imply for ...?" until the sentence is true.
 - Quirk comments use `# XXX`: "Some Zoom events receive the ID as a string, others as a number".
+- A knowingly rough approach gets a comment that says so and why it is safe: "this is a bit ugly, but cids are generally dynamic enough to avoid replacing unrelated content, and in any case it would not do any harm".
+- Docstrings use Sphinx inline literals with double backticks (``` ``log`` ```), not single ones.
 - Copy-pasted comments drift: "check unique internal name" above a title check gets a suggestion.
 - Wording follows where the code lives: a field description in the Zoom plugin says "the Zoom meeting", not "the videoconference".
 
@@ -86,6 +93,7 @@ Every item below comes from a finding raised in upstream review of contributor P
 
 ## Config And Startup
 
+- Plugins register signal handlers with `self.connect(signal, handler, sender=...)` inside `init()`, never with module-level `@signal.connect_via(...)` decorators: handlers must run only when the plugin is loaded, not whenever its module is imported.
 - Plugin config keys live in a reserved namespace (`PLUGIN_<NAME>_<KEY>`), never shared with core keys. "That way it's clear `PLUGIN_*` should never be used for a core setting."
 - Invalid configuration raises (`RuntimeError`), it does not warn and continue, even for "very unlikely" collisions.
 - Never import plugin code while loading configuration: SQLAlchemy mappers are not set up and `livesync` plus `livesync_debug` is enough to reproduce the crash. Defer plugin-specific loading to `IndicoPlugin.init()` and run cross-plugin validation in `IndicoConfig.validate`.

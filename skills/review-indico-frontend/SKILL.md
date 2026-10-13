@@ -13,7 +13,9 @@ Items observed in upstream review of contributor PRs and in fixes reviewers push
 - **Remove what the change made redundant.** A `title` that is now always present replaces `TooltipIfTruncated`; stacking both produced two competing tooltips. Combine the information into one string: `'{filename} (uploaded on {date})'`.
 - **No no-op defensive handlers.** `event.preventDefault()` on an `Icon` click: "I don't think clicking an Icon has a default behavior that needs to be disabled, does it?"
 - **Styling through `styleName`** (react-css-modules), not `className` plus a `:global()` selector. "Then you don't need `:global` on the `.inactive-email` part of the selector, which is much cleaner!"
-- **State shape:** keep props and state snake_case or camelCase consistently with how the endpoint serializes; do not mix `camelize` on one endpoint with snake_case elsewhere.
+- **State shape:** keep props and state snake_case or camelCase consistently with how the endpoint serializes; do not mix `camelize` on one endpoint with snake_case elsewhere. When a `camelize` option needs exceptions (`skipCamelize: 'meta'`) and the form has few fields, drop camelize and name the fields in snake_case: "there aren't that many keys".
+- **Exported components take destructured props in the signature** (`export function EmailListField({value, onChange, ...})`) and every optional callback must be optional in the body too; a description that says "only `value` and `onChange` are required" while the code calls `onFocus()` unconditionally gets "Did you forget to commit that?".
+- **Dialogs autofocus their first input** (`autoFocus` on the name field).
 - **Labels and messages** go through `Translate` / `Translate.string`. No bare literals a user will read.
 - **Test it with long content.** Truncated names, overflowing titles and empty lists are the states upstream clicks through first.
 - **Pure helpers live outside the component.** A formatter that only reads its arguments is defined at module level; inside the component it forces aliases like `name_` to avoid shadowing props.

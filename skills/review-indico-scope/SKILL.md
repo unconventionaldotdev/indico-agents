@@ -29,6 +29,8 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 ## PR Description
 
 - State the root cause for a fix and the use case for a feature. Behavior changes get a short Before/After.
+- Every claim in the description is in the diff. "It also relaxes the prop requirements" with no such change gets "Did you forget to commit that?"; "view per-registrant logs" that the code does not grant gets removed from the description, not added to the code.
+- A plugin PR that has run in production says so ("We've been using it in prod for a few weeks now"); it is the strongest evidence available.
 - Claims come with proof: how it was tested, against which tenant, with a screenshot for UI. When upstream cannot reproduce, the first question is "I assume you tested again today? And there were actually registrations that the plugin synced?"
 - No machine-flavored bullet lists ("Server-side rendering, CSP-safe", "No JavaScript framework dependency"); they get "I don't see how this is worth mentioning...". Every sentence carries information the reader needs.
 - Cross-link companion core and plugin PRs; contrib CI builds against the core PR referenced in the body.
@@ -40,12 +42,18 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 - Core: every PR adds a `CHANGES.rst` entry ("changelog entry please!" is a common approval message). User-visible changes under Improvements or Bugfixes, admin or developer facing changes under Internal Changes (a raised form limit is internal). New entries are appended at the end of the section, not inserted at the top ("new entries go there and not to the top"). A follow-up PR on the same feature adds its `:pr:` to the existing entry. Credit format: ``(:pr:`NNNN`, thanks :user:`login, org`)``. Entries are one short sentence wrapped at the file's width: "Log registration tag changes in the event log", not a restatement of the implementation.
 - Plugins: every PR adds a bullet to the plugin README changelog under the upcoming version. Bullets move between version headings and `pyproject.toml` is bumped at release; a `-dev` suffix in a contrib plugin is "not strictly necessary since you should be building w/ a version suffix anyway".
 - Plugin README title: "<Name> Plugin", no "Indico" prefix.
+- Plugin versions track only the first two parts of the Indico version: a new plugin starts at `3.3-dev` (`3.3.dev0`) with a changelog heading `### 3.3` and the bullet "Initial release"; a plugin that never ships to PyPI can stay `-dev` forever and rely on suffixed builds.
+- `dependencies = ['indico>=3.3.13.dev0']` when the plugin is built against master; a lower pinned release is accepted when that is what runs in production.
 
 ## Packaging And Repository Boilerplate
 
 - `pytest.ini`, `pyproject.toml` (`exclude` list with its comments), license headers: copied from a sibling plugin verbatim, then adapted.
 - No `MANIFEST.in` with hatchling.
-- A new contrib plugin is added to the `.github/workflows/build.yml` matrix.
+- A new contrib plugin is added to the `.github/workflows/build.yml` and `pypi.yml` plugin choice lists, after the blank option.
+- A plugin name says what it adds, not what core already has: `affiliation_extras`, not `affiliations`. The name propagates to the directory, package, blueprint and entry point.
+- License headers come from the repo's header tooling; a plugin may ship its own `.header.yml` with a different `owner`. Rebase when the headers of existing files were fixed upstream so the PR does not carry them.
+- `pyproject.toml` layout (inline `authors`, classifier list, `exclude` list) follows the other Indico plugins; consistency across plugin repos wins over local taste.
+- Tooling targets stay honest: a `make` with no arguments shows help instead of running linters ("`make` on its own running linters instead of building something is a bit uncommon"), Makefiles use 8-wide tabs in `.editorconfig`, and CI keeps its own commands when it needs different output flags (`--format github`).
 - No local-environment workarounds in upstream files (`--basetemp`, macOS path fixes); "AFAIK this can be set via an env var locally. I'd rather not have this upstream."
 - Temporary compatibility shims carry an `XXX` with the upstream PR they wait for, and go when that PR is merged.
 
@@ -58,7 +66,7 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 ## Commits And Branch Hygiene
 
 - Core commits: capitalized plain imperative, no type prefix. Plugin repos: `Component: Sentence case`. Core and contrib squash; `indico-plugins` merges unsquashed, so each fixup subject must stand on its own.
-- Rebase on conflicts, also mid-review: "Please fix the rebase conflicts (from merging #325)".
+- Rebase on conflicts, also mid-review: "Please fix the rebase conflicts (from merging #325)", and when repository tooling moved (new ruff isort/formatter config: run `ruff check --fix` and `ruff format` after rebasing).
 - Pull before pushing: reviewers push to contributor branches.
 - Formatting is clean before review; otherwise a "Fix ruff formatting" commit lands on the branch.
 
