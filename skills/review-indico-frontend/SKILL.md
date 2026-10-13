@@ -53,7 +53,14 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A comparison token that is not a timestamp (last update plus an "undone" marker) is named so nobody parses it as one; compare with `!==` when the value never decreases.
 - When concurrent edits outdate the view, every action is disabled, the comment form included; verify by changing state in a second tab. A prop that resets a form's state is a bug to understand, not a reason to leave the form enabled.
 - `if (!show) return null;` before the JSX instead of wrapping the whole tree in `show && (...)`; keeps the diff reviewable.
-- Local imports go before the stylesheet import.
+- Local imports go before the stylesheet import; imports with side effects (stylesheets) go last since they cannot be auto-sorted. Shared components come from the `indico/react/components` re-export, not deep paths.
+- JSX works in `.js` files; never `React.createElement(...)` by hand.
+- Handlers start with guards (`if (busy) return;`) and keep the main path flat. Optional params are explicit (`position = undefined`). Never `return` a value the caller ignores.
+- Changing a shared component (date picker year range) is checked in every consumer (room booking); new wrapper props go in the component's `PROP_BLACKLIST` so they never reach the wrapped library component. Defaults stay generic, consumers narrow (`yearsBefore={0}`).
+- Popups and pickers close when their trigger is clicked again or on an outside click; when the outside-click handler fires before the trigger's own click, check `button.contains(evt.target)` and set an ignore flag for the next click, never a timeout. A date picker opens on the period currently displayed, not on today.
+- A row that looks clickable toggles its checkbox from anywhere in the row; a pointer cursor only where clicking does something. Icons next to truncatable text get `flex-shrink: 0`.
+- Generated color palettes are deterministic per id, vary hue first and saturation/brightness after, derive the text color from the background by a contrast rule, and are checked visually for near-identical neighbours.
+- Lists with a special first item (the current container) are tested where that item has no own entries (the Home category).
 - `useSelector(selector)`, not `useSelector(state => selector(state))`; `items.find(...)`, not `const [x] = items.filter(...)`.
 - Never call `form.change` during render; use `useEffect`. Unset with `undefined`, not `null` (some field types reject `null`).
 - Destructure every prop the component reads; `...rest` is only for pass-through.
@@ -84,13 +91,13 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Field values stay light (identifiers only); extra data is resolved server-side, not through callbacks that leak field internals.
 - New components are generic (a file drop that hands the file to a callback), not bound to one workflow.
 - Async requests behind a button (`preview`) go through `try/catch` with `handleAxiosError`; a failed submit closes overlays that would hide the error.
-- Labels are plain words; messages one concrete sentence. `PluralTranslate` for anything with a count.
+- Labels are plain words and reuse the existing term ("Venue", not "Location"); messages one concrete sentence. `PluralTranslate` for anything with a count.
 - No labels on dropzones; fix error display another way.
 - Test long content, truncation, empty states.
 
 ## SCSS
 
-- A `.module.scss` that is all `:global` is a plain `.scss`.
+- A `.module.scss` that is all `:global` is a plain `.scss`; it never styles document-wide elements (`body`).
 - No inline `<style>`; reuse existing classes before adding new ones.
 - Never widen or restyle shared legacy classes (`exclusivePopup`); scope through `ajaxDialog({dialogClasses: 'editor-output'})` or a module stylesheet.
 - Markup and classes on event display pages are a public API for custom stylesheets: keep element types (`span.conference-title-link`) and floats, test against events with custom CSS, and ship a new layout behind an opt-in setting with the old CSS as default.
