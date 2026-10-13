@@ -54,6 +54,10 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Management views never hide items; they mark them with an always-visible icon plus tooltip and a background that changes when the condition is unmet. Icon size and alignment match the existing ones (locked, retention).
 - Options the user must not pick stay visible but `disabled` in dropdowns.
 - Function names follow the component spelling (`checkboxShowIfOptions`); PropTypes are the real type (`PropTypes.array`, not `node`).
+- Selectors returning a function are nouns (`getPriceFormatter`, not `getFormatPrice`); no `_` prefix on locals unless shadowing a module name.
+- `<Translate>` with `<Param>` inside JSX; `Translate.string` only outside markup.
+- Prices are formatted locale-aware through one shared formatter that takes the item (so price and currency travel together), never `price + ' ' + currency` or `toFixed(2)`.
+- Legacy jQuery code uses `$T.gettext(...)`, not `$T(...)`, and arrow functions; prefer `data-*` attributes on the trigger over an `ajaxDialog({...})` call.
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
 - Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range).
 - Conditionally rendered `Final*` fields unregister on unmount and lose their value; hide with CSS or keep mounted.
@@ -90,6 +94,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Data attributes read from optional objects (`invitation.lock_email`) are guarded; load the page without that object.
 - Attribute continuation lines align with the first attribute; no blank line after a block opener; tag contents indented; no collapsing of multi-line markup into one long line.
 - Plugin output reuses the core look (the standard join button, not a raw URL); pick the best available template hook and note the better one for later.
+- Default receipt templates: copy field descriptions and options from the existing default template (affiliation toggle, address override), spell-check default texts, offer `{date_range}` with the one-day/multi-day logic plus `{start_date}` and `{end_date}`. Filters are named after what they do (`format_placeholders`), output is marked `| safe` on the expression instead of an `{% autoescape false %}` block.
 - HTML emails: indent normally, `<h3>` for section titles, `<ul>` for lists, `<a>` for links (link the title), no `trim`/`indent` filters or blank-line hacks carried over from the text template.
 
 ## Verification

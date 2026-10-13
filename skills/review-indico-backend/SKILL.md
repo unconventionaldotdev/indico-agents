@@ -43,7 +43,15 @@ Check the touched Python files and their callers against every item.
 - No guard for values no caller passes (`if not fmt: return None` with no falsy caller).
 - Parenthesize `or` chains inside a walrus.
 - Reuse the local already computed (`user.email`, not `session.user.email` after `user = session.user`).
-- Previews use a lightweight mock object (`MockX(regform, first_name, last_name)`), not an unsaved model plus `self.commit = False`.
+- Previews use a lightweight mock object (`MockX(regform, first_name, last_name)`), not an unsaved model plus `self.commit = False`. When the real model's properties are needed, link the instance only to the form (never to the event or other persisted rows), fill the default personal data fields so the output does not look broken, and confirm in the SQL log that nothing is inserted. Sample values are dummy names and `test@example.com`, never translated placeholders.
+- Request data comes through `@use_kwargs` (`fields.Enum(StateEnum, required=True, validate=validate.OneOf([...]))`), never `request.form.get`; `@no_autoflush` goes below the webargs decorator.
+- Internal errors that no user can trigger (`'Invalid state'`) get no i18n.
+- Dialog triggers are declarative (`data-ajax-dialog`, `data-href`, `data-method`, `data-title` built with `html_params` in the form constructor, where the request context is available), not JS in the template setting `data-href` at runtime.
+- `form.identifier.data`, not `form.data['identifier']` (builds the whole dict for one value); `user.local_identity`, not `next(iter(user.local_identities))`.
+- A branch unreachable after an earlier `isinstance(exc, (A, B))` is a bug, not dead code to keep.
+- Behavior the admin may want either way (verbose vs generic login errors) is a config option defaulting to the current behavior; never set it unconditionally, never fail startup when it is missing.
+- Security code never guesses (which form field is the identifier); when the information is not available, add an explicit attribute upstream (in the library) and wait for the bump.
+- A global rate limiter check runs after form validation, never in a way that locks every user out once hit. Failed lookups of a username log at `info`, wrong passwords at `warning`.
 - Parsing (CSV sniffing, delimiters) stays server-side; `csv.Sniffer()` over the first lines, empty input returns `[]`, failure raises `UserValueError`.
 - Do not store uploads that are consumed immediately; process the stream and return the data instead of `UploadFileMixin` plus state kept in `validate_file`.
 - Exercise every caller of a changed shared util (exports from other modules, objects without an ACL) before merging.
