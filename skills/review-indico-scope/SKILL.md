@@ -26,6 +26,16 @@ Run first. A PR that fails here gets no line-by-line review.
 - Bugfixes found while building a feature ship as a separate PR with their own changelog entry; so does a follow-up idea raised mid-review. Two concerns in one PR (rate limiting and password reset flow) get split when asked.
 - A change that needs a library change (`flask-multipass`) lists the related PRs with checkboxes and the required version bump in the description, and waits for the bump instead of a workaround.
 - Noise is a product bug: a log or notification fired by an implicit, frequent action gets silenced before merge.
+- A configuration that leaves nothing to display (no publishable file type, a hide flag on) is allowed but warned about on the management page; a debatable product rule is not a hard validation error.
+- A fallback mode for unconfigured data must still cover what existing deployments hold; check real events before narrowing a widget (several files per revision means no single-file widget).
+- A setting that only toggles a harmless convenience is dropped; allow the behavior unconditionally. A setting with exactly two values and no plausible third is a boolean named after the non-default behavior (`collapse_days`), not a string option; a future related setting is a separate option, never a third value.
+- An "Experimental" or "beta" notice needs a condition for its removal; without one it is dropped. An experimental feature's changelog entry says so and names the opt-in setting.
+- An admin page configuring rules whose effect is hard to predict (regex patterns, templates) ships a test area rendering sample input with the current rules.
+- A capability the PR does not wire up and describes as untested is dropped until its consumer lands; "should work in theory" is not merged.
+- A reimplementation of a shared widget lists what the other call sites of the old one need (disabled targets with a reason, programmatic opening, custom action, opening a range from either end, bounds that change after mount) and covers it or commits to the follow-up; walk the old widget's flows in every consumer before asking for review.
+- Prefer an explicit control per intent (one trigger per end of a range) over inferred intent; when reviewers call a behavior "too much magic", go back to the explicit model instead of adding hints to explain it.
+- A new third-party integration ships behind a global `indico.conf` flag (`ENABLE_X`, default off); when off, every related surface is hidden and stored configuration is left untouched. An option the current user cannot make work (it depends on configuration one level up) is not shown at all. An integration that only partly covers a feature states the limitation in the setting description.
+- Resource-heavy per-user features (a full data export) ship with an instance-level cap (`MAX_DATA_EXPORT_SIZE`) and an option to skip the heavy part (`include_files`), both documented with defaults.
 
 ## Consistency
 
@@ -39,6 +49,13 @@ Run first. A PR that fails here gets no line-by-line review.
 - A picker shows only candidates the user can act on (own bookings, matching dates), defaults its filters from the context (the event's room), and labels the entry point precisely ("Link existing booking"). Deferred improvements get a tracking issue linked from the thread.
 - Every surface showing filtered data uses the filtered accessor.
 - Every entry point building the same payload gets the behavior.
+- Replacing a legacy dialog or endpoint means grepping the templates for every trigger of the old one (`url_for('.old')`, `data-href`, buttons in `_common.html`) and walking each variant (one item vs several).
+- When a mechanism is copied from a sibling module (editing to paper reviewing), every concept tied to the source module goes: service mixins, context names, user search tokens, validators encoding the source module's rules, options only the source needs.
+- A new registration field type is checked on every surface that renders field data: list cell and filter (`filter_choices`, `create_sql_filter`), emails (`render_friendly_data`), badges and documents, exports; a list value never appears as its Python repr. It gets an icon no other type uses, from the project icon font.
+- A picker over scheduled items shows the time range next to the title, in the list and in the stored friendly data.
+- A reimplemented widget keeps every affordance of the one it replaces (clear-search button, action button) unless the removal is announced. A replacement component never merges under a numbered alias (`DateRangePicker2`): consumers migrate, the old component, its stylesheet and library imports are deleted and the suffix dropped in the same PR.
+- A second delivery format for the same artifact (a wallet ticket next to the PDF ticket) reuses the existing payload builders and subclasses the existing RH so check-in and access rules stay identical.
+- Inherited category configuration follows the three-state model used for protection (`disabled` / `enabled` / `inheriting`); no boolean plus "not set" inside a JSON blob.
 
 ## PR Description
 
@@ -49,6 +66,8 @@ Run first. A PR that fails here gets no line-by-line review.
 - No generic feature bullets that carry no information.
 - Cross-link companion core and plugin PRs (the plugin description references the core PR as `indico/indico#N` or by URL so CI tests against that branch); keep the description current after review changes.
 - Enable "allow edits by maintainers".
+- Known limitations are stated with their mitigation ("a catastrophic regex hangs the parser; the surface is admin-only") instead of being discovered in review.
+- State which call sites the PR migrates and which keep the old implementation. New third-party dependencies are named with what each is for. Commits that add plugin extension points on the side (a template hook, exported components, a block around a form) are listed so each can be judged separately.
 
 ## Changelog And Versioning
 
@@ -60,6 +79,9 @@ Run first. A PR that fails here gets no line-by-line review.
 - When an option is renamed during review, the changelog entry, labels and description follow; one entry per PR, no duplicates left behind.
 - Plugins: README changelog bullet under the unreleased version (no new heading while the previous one is unreleased). Version tracks the first two Indico parts; new plugins start at `3.3-dev` with `### 3.3` / "Initial release". `-dev` may stay forever without PyPI releases. `dependencies = ['indico>=3.3.X.dev0']` when built against master.
 - README title "<Name> Plugin".
+- "Major Features" is filled when preparing the release; a new feature goes under Improvements and is promoted later. Accessibility work goes under `Accessibility`, worded by the user-visible result; new custom elements get a separate Internal Changes entry naming each (``<ind-with-tooltip>``).
+- A feature entry names what users can now do ("take a picture with the webcam, crop and rotate it"), not the artifact ("Add support for the X field"); a UI change leads with the benefit and the condition that triggers it.
+- Role syntax is checked character by character (`:user:` with both colons). The two blank lines closing a version block stay. After a rebase the changelog diff adds only this PR's entries.
 
 ## Packaging And Repo Boilerplate
 
@@ -70,11 +92,15 @@ Run first. A PR that fails here gets no line-by-line review.
 - No local workarounds upstream (`--basetemp`, macOS paths). Tooling from the Indico organisation (`unbeheader`) is installed unpinned in CI.
 - Compatibility shims carry `XXX` plus the awaited upstream PR; removed once merged.
 - Tooling: `make` alone shows help; Makefiles use 8-wide tabs in `.editorconfig`; CI keeps its own commands when it needs different flags.
+- Adding one npm package must not rewrite `package-lock.json`: `npm ci` on a clean tree, then `npm i <pkg>`; a lockfile diff that downgrades unrelated packages is regenerated.
+- New Python dependencies go in `requirements.in`; `requirements.txt` is regenerated with `pip-compile` (alphabetical, `# via` comments) pinning the latest release, never hand-edited.
 
 ## Docs
 
 - Sphinx roles, dummy names (`FooPlugin`, `PLUGIN_FOO_API_KEY`), precise locations ("on the plugin class").
 - Settings documented in the matching section.
+- A new custom element ships a `<name>.README.md` next to it with the expected markup and known pitfalls. Spell-check READMEs and inline docs before review.
+- Every `.. data::` setting entry ends with a `Default:` line showing the literal default after a blank line; units take a space (`10 GB`). A setting storing a URL to an externally fetched asset documents that it must be publicly reachable and whether changes affect existing objects.
 
 ## Commits And Branch Hygiene
 
@@ -83,6 +109,11 @@ Run first. A PR that fails here gets no line-by-line review.
 - Pull before pushing; reviewers push to contributor branches.
 - Lint-clean before review.
 - Run every change once, including one-liners.
+- Review-stage history is small single-purpose commits, one per review point, pushed as fix-ups; squash only when asked. Contested visual tweaks go in their own commit so before and after can be compared.
+- Before replying "fixed", confirm the commit is on the PR branch and the build picked it up. Flip draft to ready once the open threads are closed; the final review waits on drafts.
+- Values lowered for manual testing (a page size of `N`) are reverted before review; build a dataset large enough to exercise the real default.
+- No trailing whitespace in any file type (`.rst`, `.html`, `.scss`); the linters only cover Python and JS.
+- A PR closed by an accidental empty push is recovered with `git push --force origin <sha>:<branch>` and the reopen button, then rebased.
 
 ## Conversation
 
@@ -95,3 +126,10 @@ Run first. A PR that fails here gets no line-by-line review.
 - Apply and test patches upstream posts; say so.
 - Incorporate fixes other contributors post, with credit, and re-check their scenarios.
 - Close a PR yourself when the premise fails.
+- Feedback names the concrete fix: expected structure in a code block, screenshot with the problem marked. Questions raised in issue comments get answered like inline threads; answer every thread, including the ones GitHub collapses as outdated or hides behind "load more". Resolve a thread only after the fix is pushed and re-tested.
+- Follow-up discussions (the next widget to replace) move to a new issue. Adding technical debt (framework overrides) is agreed explicitly in the thread before it is written.
+- A replacement for an existing feature may keep the legacy path behind a separate button ("PDF (Legacy)") while reviewers compare output; the legacy code is removed in the same PR before merge.
+- A claim that a simpler equivalent "does not work" comes with the failing output; reproduce with a minimal snippet before accepting it. A visual bug that cannot be reproduced gets the reporter's browser and steps asked for and is retried there.
+- Multi-state interaction logic (selection state x trigger used x click target) is agreed as an outcome table in the thread before coding, every row readable on its own, and implemented as pure functions so a corrected row is a one-line change.
+- A bug found with local modifications comes with the exact patch used to reproduce it; a reviewer who wires the new component into another module to test it pushes that commit instead of keeping a stash. Before becoming unavailable mid-review, push the current state so the reviewer can continue from it.
+- When a reviewer asks whether an update can be skipped, point at the flag that already gates it (`update=False` default) rather than defending the design.

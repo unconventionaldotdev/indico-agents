@@ -20,6 +20,9 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Long symbol lists become module imports (`reglists.RHRegistrationEdit`).
 - Helpers used only by tests live in `indico/testing/util.py` as private functions, not in `indico/util`.
 - Email templates get snapshot tests (`assert_email_snapshot`, `html=True` for the HTML part) covering every generated part.
+- `@pytest.fixture` without `scope='function'`; it is the default. Never redefine a core fixture name (`freeze_time`, `snapshot`) in a test module; a module-specific variant (`freeze_time_for_snapshots`) wraps the global one and is `autouse=True` when every test needs it.
+- Factory fixtures take required arguments positionally (`create_attachment(user, object, title, ...)`); keyword-only is for optional ones. Explicit fixture ids are high (`420`, `1337`), not `42`: a test creating that many rows collides with the sequence.
+- A snapshot directory is set once by a module-level wrapper (`_assert_yaml_snapshot(snapshot, data, name)` with `__tracebackhide__ = True` and `snapshot.snapshot_dir = SNAPSHOT_DIR`); the shared helpers (`assert_yaml_snapshot`, `assert_email_snapshot`, `remove_dynamic_data`) live in `indico/testing/util.py`. A field added to an export schema updates every export snapshot (the empty-user one included); run the snapshot tests instead of regenerating blindly.
 
 ## Assertions
 
@@ -30,6 +33,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Strongest assertion available (`set(rh.PERMISSION) >= {...}`).
 - Negative tests cover redundant and nonsense inputs, not only the empty case.
 - Every positive rule gets its counter test (different type allowed in another event).
+- Expected lists derived from an enum are built from the enum in a fixture (`for opt in DataExportOptions`), not typed by hand. Snapshot normalization keeps `null` visible (`(?!null$)` before the placeholder) so a field that unexpectedly becomes empty still fails.
 
 ## Test Data
 
@@ -38,6 +42,7 @@ Check every touched `*_test.py` and `fixtures.py`.
 - `with signal.connected_to(handler):`; `client.post(url, json=...)`.
 - Fake persisted rows get an explicit `id` when the code branches on it.
 - Build related rows through relationships (`parent=section`), not `parent_id=section.id` after a manual flush. Drop fixture arguments the test does not read. Multi-line dict literals close `}` on its own line.
+- Denormalized pairs are set together as the application would (`affiliation` text with `affiliation_link`). Every nested schema in a snapshot is exercised with at least one populated row; `[]` or `null` for a section hides typos in its `Meta.fields`.
 
 ## Layout
 
@@ -47,6 +52,8 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Every new validation rule and every non-trivial query (grouped tag matching, subqueries) ships with a test.
 - One-line docstrings only when the name cannot carry the behavior.
 - `parametrize` over near-duplicate tests and over RH classes; `list(SomeEnum)` for all states.
+- Snapshots of nested data are YAML (`assert_yaml_snapshot`, `.yml`), not JSON; ids, timestamps and uuids become placeholders through `strip_dynamic_data=True`, never ad-hoc regexes in the test module.
+- JS unit tests live in `__tests__/<module>.test.js` next to the module and import it with `../module`. Pure client logic extracted into its own module (a selection state machine, a date parser, `formatDate`) ships with a Jest test: one case per transition table row, per locale format, per accepted and rejected input (`test.each`); a web component PR without tests for its state machine is incomplete.
 
 ## Scenarios Upstream Tries
 
@@ -61,6 +68,13 @@ Check every touched `*_test.py` and `fixtures.py`.
 - State transitions with payment.
 - User editing values a manager set outside the user range.
 - Dependency chains (a -> b -> c), every type allowed as a dependency, edits that omit unchanged fields, manager-only data sent by a user (ignored).
+- Both alternatives of mutually exclusive endpoints (the typed endpoint rejects when no types exist, the untyped one rejects when types exist); the fallback mode for unconfigured data against existing data; files submitted through an upload endpoint survive the unclaimed-files cleanup task.
+- Submitted ids that do not exist, belong to another event, or point at objects the user cannot access; a listing with public and restricted children as a user with access to only some; cloning with the dependency cloner disabled and with a referenced object deleted since.
+- Export or render of a production-size event (hundreds of pages): count queries before and after; a child-object view next to the full one with the same data; legacy data with quotes or line breaks in titles rendered into generated CSS or PDF; garbage input to a regex validator and a pathological pattern that hangs the parser.
+- Unlisted event (no category) using a category-inherited feature; three-state inherited config (inheriting from an enabled parent, disabled under an enabled parent, enabled with own settings, root never inheriting); global flag off: every surface hidden, stored settings untouched, saving the parent form without touching the integration fields keeps them.
+- Handler of a broad update signal: an irrelevant change makes no API call, a relevant one does; credentials unchanged on save: no verification request; signed URL: valid token bypasses protection, missing or wrong token falls back to the normal check; remote object missing (404) on a silent sync: no error, no creation.
+- Date widgets: the edit path (initial value in canonical format); a non-UTC browser timezone round-trips the same day; a non-English locale; a month where every day is disabled by `min` (no focusable day, no console error); reopen after selecting a range; edit only one end of a long range; a bound toggled while the picker is open; second click before the first in both pickers; per sub-field empty, invalid and out-of-bounds messages after the trigger was clicked and the dialog closed without typing; locked end with and without a value; `readOnly` vs `disabled` vs both.
+- Registrant-facing pages and file links opened logged out through the token link. Paginated lists with more rows than the largest page size, exactly one page, zero rows, and a search with no match. Export with every option selected and every fixture populated; extract the archive into an empty directory and read the YAML.
 
 ## Plugin Boilerplate
 

@@ -103,6 +103,35 @@ Check the touched Python files and their callers against every item.
 - Overlap checks go through `overlaps()` from `indico.util.date_time` with tuples and `inclusive=True`, never hand-written comparisons.
 - Lookups: `Model.get_or_404(id, is_deleted=False)` and `filter_by(date=date)` over `filter(Model.date == date)`.
 - Do not re-implement framework behavior: `IndicoFlaskParser` already strips surrounding whitespace from request data.
+- Two sibling operations whose names differ only by a filler word (`create_new_paper_revision` vs `create_paper_revision`) are renamed so each says what differs.
+- A line over 120 characters inside a comprehension gets a shorter loop variable, not a line break. A call whose kwargs do not fit on one line breaks after `(` with one kwarg per line and `)` on its own line; never a hanging indent under the first kwarg. Parentheses for continuation, never a trailing `\`.
+- Logging placeholders match the argument count; `%r` of an object already names its parent. `%s` formats the exception itself, no `str(exc)`.
+- Files coming from an upload endpoint are never referenced by copying `storage_backend` and `storage_file_id` into a new row (the upload `File` is unclaimed and gets deleted): copy the content (`with file.open() as f: obj.save(f)`) or `.claim()` it. Stored files are read through a context manager (`with file.open() as f, Image.open(f) as img:`).
+- Group with `group_list` from `indico.util.iterables`, not `itertools.groupby` (needs pre-sorted input).
+- `d.get(key).attr` is always a bug: either `d[key].attr` or handle `None`. `a != b`, never `not a == b`. `[x for x in xs if cond]`, never `filter(lambda ...)`. A loop that only sets a flag becomes `any(...)`/`all(...)`; a loop filling a dict becomes a comprehension. Nested boolean conditions nest their parentheses so the grouping is visible. Return the expression directly; no local assigned only to be returned. No parentheses around a bare literal (`'; '.join(...)`).
+- JSON is produced with `json.dumps(...)`, never `str()` of a list or dict; data for barcodes or external payloads uses `separators=(',', ':')`. Human-facing YAML is dumped with `allow_unicode=True`. `.encode()` / `.decode()` without `'utf-8'`.
+- A comprehension building dicts puts `{` on its own line, one key per line, each `for`/`if` clause on its own line. Nested payload dicts are compact (`{'defaultValue': {'language': 'en-US', 'value': x}}` on one line when it fits) with trailing commas on multi-line literals. Optional payload keys are added only when there is a value, never added and popped.
+- APIs return dates and datetimes as `.isoformat()`, never a display `strftime`; the client formats. A date derived from a datetime is taken after `astimezone(event.tzinfo)`. Times for registrants use `event.display_tzinfo`, times in management `event.tzinfo`; an endpoint serving both takes a `force_event_tz` query flag. Dates shown from a payload reuse `make_format_event_date_func(category)(event)`, never a hand-rolled pair.
+- No hand-written type checks (`isinstance(x, list)`) on data the marshmallow field type already rejects.
+- Reach the event through the object (`self.form_item.registration_form.event`), never `g.rh.event`; when `g` is unavoidable, `from flask import g` with a one-line why comment. Code reading `event.category` handles unlisted events (`category` is `None`).
+- An endpoint returns the fields the client reads, not the output of an existing heavy serializer filtered client-side. Expensive work runs only on the branch that uses it; a branch that redirects returns before the query. Templates receive lists (`.all()`), never query objects. A query result used twice in one expression is a local.
+- A second renderer of the same data (a PDF of an existing view) reuses that view's loader, extracted into a util with keyword-only options returning a dataclass; never a second query path. Compare query counts on a production-size event.
+- Never compare ids across object types (`session.id == entry.id`); filter by type first and compare the related objects. Drop guards for relationships the type guarantees. Collections that mix kinds (`Attachment.type` file vs link) are filtered by kind before reading kind-specific attributes.
+- User-supplied regexes combined with `|` are each wrapped in `(?:...)`.
+- `# noqa: CODE` trails the offending line; a standalone `# flake8: noqa` disables every rule for the whole file. No blank line after `class X:`; no blank lines between consecutive statements of a short method body.
+- A large integration class (an external API client) gets its own module inside the owning package (`registration/google_wallet.py`), never appended to an unrelated file. Integration-specific helpers live on the integration class as static methods, not as properties on `Event`. Schemas serving one feature live in their own module (`export_schemas.py`).
+- Properties never make API requests, modify remote data, or walk the parent chain with one query per level; that is a method or, for inherited values, a CTE `column_property`. Readiness is a boolean property (`configured`), not callers testing an internal attribute.
+- An API client is scoped to the long-lived parent (`Manager(event)`); per-item objects are method arguments. Client methods read their own configuration (`self.settings['issuer_id']`) and build identifiers through one helper instead of threading ids through every signature. Constructor state comes from a helper returning values (`self.credentials, self.http_client = self._load_credentials()`), never `self.x = None` placeholders plus a mutating `auth()`. Constructor arguments only read inside `__init__` are locals.
+- The obvious first argument is passed positionally (`client.get(url)`). A method that returns nothing has no return annotation and uses bare `return`.
+- `__repr__` returns `format_repr(self, 'id', 'state', 'file')`, never a hand-built f-string.
+- `send_email(make_email(...))` in new code; the `email_sender` decorator is legacy. Emails sent from a Celery task render inside `with user.force_user_locale():`.
+- Pure string path manipulation uses `PurePath`, not `Path`; keep the original suffix instead of recomputing an extension.
+- The enum member for "nothing requested yet" is `none`; `pending` means submitted and waiting. Int members with no falsy meaning start at `1`, with `None` as the first `__titles__` entry.
+- Size limits convert to bytes once at the boundary (`config.MAX_X_SIZE * 1024**2`) and compare against `file.size`; a unit comment states the stored unit.
+- No second accessor for data the session already exposes (`session.moment_lang` vs a new property); when the existing one lacks a detail, raise it in the thread first.
+- A validator resolving a reference returns early on an empty value, then raises `ValidationError('Invalid file')` (no i18n) when it does not resolve; it never passes silently and drops conditions an earlier guard established.
+- Collections are serialized with `Schema(many=True).dump(items)`, the schema instantiated once outside the loop. A `has_x` helper returns a bool via `.has_rows()`. Many-to-many membership is filtered through the relationship (`.any(User.id == user.id)`), never the association table.
+- A subclass does not adopt a better mechanism (`mm_field_class = MMFileField`) while its parent keeps the hand-rolled one; stay consistent and note the refactor. A new relationship on `User` lands in the personal data export schema. A new column in a management list is a list-generator item managers can toggle, not always-on markup.
 
 ## Naming And Comments
 
@@ -118,6 +147,11 @@ Check the touched Python files and their callers against every item.
 - Comments and strings follow a rename ("booking occurrences" after the link moved to occurrences). Module names keep their capitalization ("Room Booking occurrence(s)"), common nouns stay lowercase; menu titles name the process ("Room booking"), not a count.
 - A model `url` property with no own endpoint yet uses the parent's locator with a comment, so no unused id lands in the query string.
 - A recurring object is created only when the span needs it (`RepeatFrequency.NEVER` for a single day); defaults never force repetition. An enum whose member means "off" may use `0`.
+- A variant name states the distinguishing property, not an incidental one (`Untyped`, not `Single`, when the untyped path accepts several files), applied to every sibling pair. New names reuse the casing already in the codebase.
+- Locals shadowing builtins get a trailing underscore (`min_`, `max_`), never a leading one; placeholders in translatable strings are plain words (`{max}`). `_dt` keys hold datetimes; a date-only key is `_date`. A list of dicts is not named `schema`. No initialism locals (`s_b_map`). Attribute names follow the module's convention (`self.contrib`).
+- Docstrings are full sentences ending with a period, summary on the opening `"""` line (or starting on the next line when none fits), reST `:param x:` style, no Google-style `Args:` sections.
+- Availability of a feature is split into named flags: `is_x_enabled` (own toggle), `is_x_configured` (global flag plus inherited configuration), `is_x_available` (both); each surface checks the flag it needs.
+- Hook signals that let plugins alter a payload are named after the data (`google_wallet_ticket_class_data`); builders are `build_x_data`, remote calls `create_x` / `patch_x`. User-facing identifiers use `friendly_id` (`f'#{registration.friendly_id}'`), never the database `id`.
 
 ## Imports
 
@@ -175,6 +209,17 @@ Check the touched Python files and their callers against every item.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
 - Schemas limit what is accepted and returned. List APIs returning many rows expose foreign keys (`link_id`, derived by `SQLAlchemyAutoSchema`) rather than nested objects whose access would have to be checked per row; details load lazily from the item dialog. Nesting a new relationship in such a schema is checked with `bin/utils/db_log.py` and gets a `joinedload`.
 - Validation applies identically on every path (import modes, API, UI).
+- RHs inherit from their module's own base (`RHManagePapersBase`), which carries the feature and permission checks, never the generic `RHManageEventBase`. Event-scoped JSON endpoints extend the event base (`RHProtectedEventBase`, `RHDisplayProtectionBase`) and read `session.user`; never `RHUserBase`. Templates read `session.user` directly.
+- A new RH goes into the existing controller module of its topic (`management.py`, `display.py`, `api.py`); no new file for one class. Two RHs with identical access checks and flags share an intermediate base next to them, each keeping only its `_process`; when the shared part is a tiny `_process`, duplicating beats a mixin. A page RH reduced to one `render_template` uses the `WP` class directly, no `view_class` on a mixin.
+- `_process_args` only resolves objects from URL args; a query that depends on nothing in the URL runs in `_process` as a local. Child objects named in view args resolve with `@use_rh_kwargs({'contrib': ModelField(Contribution, with_parent='event', data_key='contrib_id')}, location='view_args', rh_context=('event',))`, never `get_or_404` plus a manual parent check.
+- Two alternative endpoints for the same action (typed vs untyped submission) are mutually exclusive server-side: each checks the condition that selects it (`PaperFileType.query.with_parent(self.event).has_rows()`) in its access check.
+- The blueprint `methods` tuple lists only methods a client uses; no `methods=('GET',)` (the default), no `PUT` added "for later". `get_file_context` returns a tuple. An endpoint accepting several files declares `FilesField`.
+- Mixins tied to another module's service (`TokenAccessMixin`, `SERVICE_ALLOWED`) never land on RHs of a module without such a service.
+- A list endpoint over event children applies `can_access(session.user)` per item; event access does not imply access to every child. A validation query checks the whole input: compare `len(rows)` with `len(ids)` so filtered-out ids are rejected. Ids submitted for a field are validated to exist, to belong to the owning event and to be accessible to the user.
+- URL prefix follows the audience: `/admin/` only for admin-only RHs; JSON endpoints live under `/api/` on the display side and `/manage/<module>/api/` (named `manage_*_api`) on the management side; the URL names the resource, no `/data` suffix; collection URLs are plural with a trailing slash (`/favorites/`), item URLs append the id. Admin pages pass the side-menu item name to `WP*.render_template(tpl, 'item')`.
+- A new RH delivering an existing artifact in another form subclasses the artifact's RH (`RHTicketGoogleWallet(RHTicketDownload)`) so `_process_args` and `_check_access` stay shared; when unavailable it raises `NotFound('...')`. A management endpoint that already serves the generic case (file download) is reused for the new subtype; a dedicated RH only where handling differs. An endpoint rename follows into every consumer (`url_for`, `indico-url:` imports, `fields.Function` URLs).
+- A file tied to an account is served by its own RH (`/user/data-export.zip`, `file.send()`, `NotFound` when absent) under the owner's access check; `signed_download_url` is for contexts without an owner. The notification email links to the page that offers the download, not to the file.
+- Actions an admin can run on another user's data log target and actor at `info` (`'... for %r triggered by %r', self.user, session.user`). Blueprint `url_defaults` callbacks that read `request` guard with `has_request_context()`; `url_for` also runs in Celery and the CLI.
 
 ## Signals
 
@@ -189,6 +234,9 @@ Check the touched Python files and their callers against every item.
 - Signal kwargs have no defaults: an absent kwarg is the normal case, the special case is an explicit `silent=True` (or `no_log`), never `log=True` that every handler must default itself.
 - A state transition performed by hand (a bulk action setting `complete`) still fires the state-change signal and notifies; pass `silent=True` when the generic log entry would mislead and log the action yourself.
 - A handler that always yields exactly one item returns it instead of being a generator.
+- A handler lives in the module of the work it performs, not the module that emits the signal. Handlers name the sender by what it is (`event`, not `sender`), declare each kwarg they read, keep `**kwargs` only for future kwargs, and never `kwargs.get()` a key the signal always sends.
+- Handlers of broad signals (`event.updated`) intersect the `changes` keys with the fields they care about (`set(changes) & fields`) and return otherwise. `event.updated` is not reliable for date changes (auto-extension by moving a contribution bypasses it); date-dependent sync handles `event.times_changed`, or a comment says why it is unnecessary.
+- A handler on a per-registration signal checks that registration's own form flag, not an event-wide query. The importable signal name matches the string name (`x_data` / `'x-data'`).
 
 ## Forms (WTForms)
 
@@ -213,6 +261,12 @@ Check the touched Python files and their callers against every item.
 - Never append to `field.validators` or change `field.flags` in `__init__` (leaks into every instance); use `inject_validators` or `del self.field`.
 - Subjects and other non-HTML strings get no `strip_tags`; escape where they are rendered.
 - Check rendered field order after overriding an inherited field.
+- JSON pasted by admins (service account credentials) goes through `JSONField(widget=TextArea(), empty_if_null=True)` so the JSONB column stores an object, never a string; decoding is `json.loads`, never `ast.literal_eval`.
+- `HiddenUnless` comes first in the validator list so a hidden field skips `DataRequired`, and compares against the enum member. Removing a field in `__init__` (`delattr`) removes every sibling whose `HiddenUnless` references it.
+- Several fields that persist into one JSON settings column are assembled by a `@generated_data` property; the form's `data` property drops the individual fields so `populate_from_dict` never sees unknown attributes. The form takes the owning object as a keyword-only constructor argument.
+- A mode dropdown is an `IndicoEnumSelectField(enum=RichIntEnum)`; context-dependent titles go through `field.titles`, unavailable members through `field.skip` (`{Mode.inheriting}` on the root).
+- Credentials entered in a settings form are verified against the provider in `validate()` after `super().validate()`, only when they or the related identifier changed; the client returns an enum of outcomes and the form appends one message per outcome to the field it concerns.
+- Field labels inside a fieldset do not repeat the fieldset name (`Issuer ID`, not `Google Wallet Issuer ID`); descriptions of provider identifiers state operational constraints (never reused across servers, changing it breaks updates) and known limitations.
 
 ## Schemas (marshmallow)
 
@@ -231,6 +285,15 @@ Check the touched Python files and their callers against every item.
 - YAML written for humans keeps its order (`yaml.safe_dump(..., sort_keys=False)`).
 - A binary response never smuggles JSON in a custom header; return JSON with the base64 payload plus the data, or the file alone.
 - Backend regex validation mirrors the frontend one.
+- `rh_context` lists only attributes the RH actually sets; a context name copied from another module is removed. A field that reads its data from the RH context takes no constructor arguments for the same objects; use `@use_rh_kwargs(..., rh_context=(...))` instead of `parser.parse`. Options whose only consumer is the source module are dropped when the field is copied. An args schema is not reused across modules when its validators encode the source module's rules.
+- Field settings with a cross-field rule (`maximum >= minimum`) need a schema class via `setup_schema_base_cls`, not a `setup_schema_fields` dict. A string setting with a closed set of values gets `validate=validate.OneOf([...])`; an enum is overkill for two values.
+- A validating field returns the raw value (the pattern string), not a derived object (a compiled regex); compile to validate and discard. `validate=not_empty` over `Length(min=1)`. Fields holding URLs validate as URLs. A `@validates_schema` check never repeats what a field already validates.
+- A `ValidationError` built from a library exception catches the class the library raises (`re.error`) and wraps it with a translated label (`_('Invalid regex: {}').format(exc)`); an exception class that cannot occur is not listed.
+- `from marshmallow import fields` and `fields.X`; no individual type imports (`from marshmallow.fields import List`).
+- Computed fields longer than a one-liner are `fields.Method` backed by a named `_get_x`, not `fields.Function(lambda ...)`. `url_for` inside a schema names the blueprint explicitly (`'event_contributions.manage_update_contrib'`), never a blueprint-relative `.endpoint`.
+- A user-facing export contains only what the user sees in the UI: no registration tags, no manager-only fields or sections (`field.parent.is_manager_only`), no internal `meta` blobs, no system-level configuration. For an association keep the user-specific data with the related object nested under it.
+- A per-user export walks every relationship on `User`, legacy ones included, and both directions of a relation (`reservations` and `reservations_booked_for`); denormalized pairs are both exported (`affiliation` and `affiliation_link`). Content the user authored in another entity (note revisions) is its own section with raw `source` and `render_mode`, linked by id. Soft-deleted rows stay in a personal data export with `is_deleted` exposed.
+- A schema field dumping a lazy relationship with nested rows becomes a `fields.Method` calling a query helper that carries the eager-load options. Dump every schema against populated fixtures and read the output; a list of `null`s or an empty mapping means the field reads the wrong attribute.
 
 ## SQLAlchemy And Migrations
 
@@ -274,6 +337,13 @@ Check the touched Python files and their callers against every item.
 - Data migrations never hardcode the system user id; use `(SELECT id FROM users.users WHERE is_system)`.
 - Uniqueness scope matches the product: form or event level, never instance-wide constraints that collide on large installations.
 - One query per bulk sync, not per item.
+- One alembic revision per PR: schema changes added during review are folded into the existing revision and its title updated to cover the whole change. Commented-out statements from earlier iterations and the autogenerated `# ### commands auto generated by Alembic` comments go.
+- A NOT NULL column added with `server_default` gets `op.alter_column(..., server_default=None)` right after. A new column whose default is `inheriting` sets the root row to a non-inheriting value in the migration (`UPDATE ... WHERE parent_id IS NULL`, `# noqa: S608` on SQL built from enum values) and in `create_all_tables`.
+- Configuration children inherit uses a three-state `RichIntEnum` column (`InheritableConfigMode`) next to the JSON settings column, with CHECK constraints `(id != 0) OR (mode != inheriting)` and `(mode != enabled) OR (settings != '{}'::jsonb)` in model and migration. The effective value is a recursive CTE classmethod mirrored from `get_protection_cte`, exposed as `column_property(query, deferred=True, expire_on_flush=False)` in `_mappers_configured`.
+- No native PostgreSQL enum in a migration, also inside `ARRAY`: `PyIntEnum` or `sa.Enum(..., native_enum=False)`; `ALTER TYPE ... ADD VALUE` cannot be used in the same transaction. Revisions never import model enums; they define a private `IndicoIntEnum` copy (`class _State(IndicoIntEnum)`) after the imports, or interpolating a member into a `CheckConstraint` string yields `State.success` instead of `2`.
+- A relationship to `File` never cascades deletes (the blob stays orphaned); copy an existing `File` relationship (`lazy=True`, named backref) and release with `file.claimed = False` so the cleanup task removes it.
+- Pair `joinedload(rel)` with `.raiseload('*')` so any lazy load surfaces during testing. When the filter joins or uses `.any()` over a relationship you also eager-load, select the ids first and load the rows by `Model.id.in_(ids)` with the loader options. `joinedload('rel').load_only('id', 'title')` on joined parents; deep chains go in a local strategy variable; `selectinload` for collections. Check the SQL log over fully populated fixtures.
+- Ids stored in JSON data that reference event objects are remapped in the cloner through `shared_data`, reset to `[]` when the dependency cloner did not run, and entries whose target no longer exists are dropped, never left as `None`.
 
 ## Config And Startup
 
@@ -285,6 +355,8 @@ Check the touched Python files and their callers against every item.
 - Config-provided credentials disable and mask the matching admin UI fields; all credentials of one integration configurable the same way; file-based secrets optional.
 - Settings docs go in the matching section ("System", not "Development").
 - Log-type or derived data gets its own storage setting (default `None`), never `ATTACHMENT_STORAGE`, which holds long-term user content.
+- Derived config values are `@property` on `IndicoConfig` (or computed in `_postprocess_config`), never added to `DEFAULTS`; absolute URLs via `urljoin(self.BASE_URL, path)`, never `'http' in url`. A global kill switch (`ENABLE_X`) hides UI and gates every consumer; it never deletes stored configuration when toggled off.
+- An image an external service shows in a different context (a wallet card) gets its own URL setting with a matching `ABSOLUTE_*` property instead of reusing the site logo; the bundled default fits that context.
 
 ## Logging, Flashing, Errors
 
@@ -305,6 +377,10 @@ Check the touched Python files and their callers against every item.
 - External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
 - End-user warnings are one concrete sentence; no double spaces or typos in user strings.
 - Log arguments carry only what helps (no event id when it cannot be acted on).
+- One module-level `logger = Logger.get('module.submodule')` named after the module path; no inline `Logger.get()` with a broader name. A log message names the operation that actually failed (the GET checking existence, not the create that never ran).
+- Provider error bodies never reach the user: `resp.raise_for_status()` plus a decorator (`@handle_http_errors()`) that logs a warning and raises `ServiceUnavailable(_('Could not generate ticket'))` from `RequestException`; no `if status_code != 200: raise BadRequest(response.text)` chains. Side-effect syncs triggered by an unrelated action fail silently (`silent=True`) with a logged warning so the main action succeeds; a 404 on the remote object is a no-op.
+- Settings stored in one JSON column are logged per key (expand the `(old, new)` pair into one `changes` entry per key with typed `make_diff_log` fields); secrets are replaced through a `convert` callable with a hash marker (`<hidden:{crc32}>`), never written in full.
+- A limit that truncates output sets a flag on the row (`max_size_exceeded`), logs a warning with the object, and the notification says what was left out and how to retry with less. A failure email says "due to an error", not only that it failed.
 
 ## External Services And Performance
 
@@ -330,6 +406,10 @@ Check the touched Python files and their callers against every item.
 - A locking rule never overrides an explicit admin action (an admin-desynced field stays desynced) and a field with no provider data is never locked, or signup breaks.
 - Forbid configurations that multiply edge cases (a room with registration enabled attached to several events) instead of supporting them.
 - Features whose result reaches users without an account must deliver it where those users can see it (registration summary via token link).
+- Provider fields with semantic meaning (`gate`, `seat`) are not repurposed for custom content; use the provider's template override. A PATCH payload rebuilt from current data sets cleared keys to `None` explicitly, otherwise the provider keeps the stale value; a provider constraint gets a comment and a UI warning.
+- Record that a remote object was created (its id in an `EventSettingsProxy`) so later handlers skip API calls when nothing was created and a query can list affected events; "in use" derives from that record, not from counting registrations. Remote artifacts link back to the Indico pages (`event.external_url`, `url_for(..., _external=True)`).
+- A long-running job (an export) runs in Celery and emails the user when it finishes; no client polling loop. A per-user background job is unique: a running one blocks a new request, a finished one is replaced and its file released. A feature that claims a stored file owns its lifecycle: a scheduled task removes stale ones after N days and the row's state records the expiry.
+- An archive export writes one file per top-level section (`{key}.yaml`); member names are relative (no leading `/`), user-provided names go through `secure_filename` with the row id prefixed (`{id}_{stem}{suffix}`), and a blob referenced from several rows is written once. Extract into an empty directory to verify.
 
 ## Security
 
@@ -344,6 +424,8 @@ Check the touched Python files and their callers against every item.
 - User-authored templates render in `SandboxedEnvironment(autoescape=True)`; `TemplateSyntaxError`, `TemplateRuntimeError`, `SecurityError` and `LookupError` become `UnprocessableEntity`.
 - Anything that signs values inside `url_for` (a URL converter) must be opt-in (`_sign=True` kwarg stored on `g`), because the URL signing endpoint builds URLs for arbitrary endpoints; a test asserts that endpoint rejects underscored args. Cache-busting slugs in URLs stay.
 - Picture sizes and similar magic numbers are module constants; `A if cond else B` without a negated condition.
+- A resource an external service must fetch from a restricted object (an event logo) is exposed through a signed URL (`secure_serializer.dumps(self.event.id, salt='event-logo-download')` as a `token` query arg checked in `_check_access` before the normal check), never by requiring the object to be public.
+- Security checks (password strength, pwned passwords) are never `@make_interceptable`; extra checks go through the signal they already fire.
 
 ## Behavior Changes
 
@@ -360,3 +442,5 @@ Check the touched Python files and their callers against every item.
 - Terminology is one word per concept across labels, placeholders and errors ("Indefinite", not "Permanent" in one place).
 - A locked value is written from its source (`value = invitation.email`), not by marking the field read-only and leaving it blank.
 - Labels name the behavior plainly ("Lock email address", "cannot be changed during registration"); verbs are consistent across UI, flash messages and changelog ("re-send").
+- An option that has no effect in a mode is hidden in that mode; a client-side toggle that only hides inputs still needs the server to ignore their values.
+- A view scoped to a child object (one session's timetable) has no parent context: display decisions derived from the parent are forced to the standalone-sensible value.
