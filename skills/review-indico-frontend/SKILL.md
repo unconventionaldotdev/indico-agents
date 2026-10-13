@@ -9,6 +9,12 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 ## React
 
+- Plugin hooks are fetched once (`const hooks = getPluginObjects('onX')`) outside the loop that runs them.
+- A wrapper that preconfigures a field spreads the inner `propTypes` (`...FinalPersonLinkField.propTypes`).
+- Object properties with static names use dot access (`options.has_no_files`); optional chaining (`data?.count || 0`) over `(data && data.count) || 0`; a count comes back as `count` and lands in `numX`.
+- Id lookups use a plain object, not a `Map`, unless measured.
+- A conditional field is rendered or not; never `type: 'hidden'` to blank it.
+- Persisting UI state (filters) in local storage: one `useEffect` with `[]` loads it once; saving happens in the change handlers, not in a second effect watching the state.
 - Native mechanism first (`setCustomValidity` over custom submit interception).
 - Search existing components in core and official plugins before writing one (list inputs, country dropdowns, `isoToFlag`); copy and adapt rather than reinvent.
 - Only the HTTP call goes inside `try/catch`; bugs in surrounding code must surface.
@@ -113,6 +119,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 ## SCSS
 
+- Dialog and list heights relative to the viewport use `vh`, not `em`.
+- Classes that exist for JavaScript carry the `js-` prefix (`js-popup-container`); styling classes never double as hooks.
 - A `.module.scss` that is all `:global` is a plain `.scss`; it never styles document-wide elements (`body`). `:global(.lib-class)` rules nest inside the component's own class, never at the top level.
 - No inline `<style>`; reuse existing classes before adding new ones.
 - Never widen or restyle shared legacy classes (`exclusivePopup`); scope through `ajaxDialog({dialogClasses: 'editor-output'})` or a module stylesheet.
@@ -120,6 +128,9 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 ## Jinja
 
+- Every visible string is translated. Templates use `{% trans %}Layer 1{% endtrans %}` or `{% trans n=1 %}Layer {{ n }}{% endtrans %}`, not `gettext('...').format()`; the Jinja and JS catalogs are separate, so matching a JS string buys nothing.
+- Blocks placed inside attributes trim whitespace (`{%- block name %}`) or move into the `{% set %}` above; a block that reads loop or local variables is `scoped`.
+- Wording: hyphenate compound modifiers ("user-submitted data"), "yet" at the end ("does not have an account yet"), sentence case on buttons ("Add from search"), the terms the UI already uses ("authors").
 - Reuse core macros (`format_event_date`) before hand-rolling.
 - Inline scripts: `<script>` without `language`, no jQuery in new code (`document.querySelector`, `classList`, `domReady.then(() => ...)`), arrow functions. Jinja booleans are lowercase (`false`); `{%- trans %}` on its own line for long strings.
 - Shared templates (`forms/_form.html`) never branch on one form's id; page-specific behavior lives with that page. No `XMLHttpRequest`: `indicoAxios` in JS modules, `fetch()` in the rare inline script, and preferably no inline request code at all.
