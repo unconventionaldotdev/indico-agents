@@ -1,6 +1,6 @@
 ---
 name: review-indico-pr
-description: Review an Indico core or plugin change against upstream review standards, then walk the developer through each finding and apply the agreed fix locally. Works on an open PR or on the current branch (committed and uncommitted changes) against master before a PR exists. Use before opening or requesting upstream review of an Indico change, or when reviewing a teammate's Indico PR.
+description: Review an Indico core or plugin change against upstream review standards, then walk the developer through each finding and apply the agreed fix locally. Works on an open PR, on the current branch (committed and uncommitted changes) against master before a PR exists, or on the commits about to be pushed. Use before every push, before opening or requesting upstream review of an Indico change, or when reviewing a teammate's Indico PR.
 ---
 
 # review-indico-pr
@@ -24,10 +24,11 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 
 ## Workflow
 
-1. **Target.** Two modes:
+1. **Target.** Three modes:
    - **PR mode** (a PR number or URL is given): `gh pr view <n> --json number,title,body,baseRefName,headRefOid,baseRefOid,url,author,isDraft`, check the branch out, diff against the merge base with the base branch. Review threads already on the PR count as context, not as findings to repeat.
    - **Branch mode** (no PR yet, the default when the developer is on a feature branch): the change set is everything on the branch plus the working tree, committed or not. Locate the base remote (`upstream` when it exists, else `origin`), `git fetch` it, then `git diff $(git merge-base HEAD <remote>/master)` for tracked changes and `git status --porcelain` for untracked files, which are read whole. Never stash, checkout or otherwise touch the working tree. The description and changelog checks run on what exists (commit messages, `CHANGES.rst` or the plugin README diff); missing ones are findings at the "Reviewer would fix" level with a draft text, since the PR description is still to be written.
-   In both modes identify the repository kind (core, `indico-plugins`, `indico-plugins-contrib`, a private plugin) because changelog, commit and packaging rules differ.
+   - **Push mode** (the developer is about to push): the change set is the commits not yet on the remote branch. `git fetch` the push remote, then `git diff <remote>/<branch>..HEAD` when the branch exists there, else the branch mode diff against master. Uncommitted changes are out of scope: they are not being pushed. Findings fixed here go in a new commit, never an amend, so the review covers exactly what leaves the machine.
+   In every mode identify the repository kind (core, `indico-plugins`, `indico-plugins-contrib`, a private plugin) because changelog, commit and packaging rules differ.
 2. **Read beyond the diff.** For each touched symbol open the full file, its callers, its siblings (the webinar twin of a meeting path, the other RHs in the module, the other templates showing the same number), and the companion repo when core and plugin change together.
 3. **Run the layers** in order scope, backend, frontend, tests. Scope runs once over the whole change. The other three run per changed file: pick the sections that match the file (an RH file gets Request Handlers, Logging and Security; a `.jsx` gets React and Verification; a `_test.py` gets the tests skill) and walk every bullet of those sections against the hunk and its surrounding code. Record each finding with file:line, problem, fix. Run `pre-commit run --files <changed>` (core) or `ruff check` + `ruff format --check` (plugins).
 4. **Present** a top-level remark when the premise is off, then:

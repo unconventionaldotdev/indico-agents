@@ -60,6 +60,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 - Do not commit secrets, generated caches, local IDE metadata, or build artifacts.
 - Use single-line commit messages in the form `type: imperative subject`.
 - Never add `Co-Authored-By` trailers.
+- Before every push, run the `review-indico-pr` skill in push mode over the commits that are about to leave the machine (the diff between the remote branch and `HEAD`). Fix the findings in a new commit, run the verification step the skill prescribes, and only then push. A push without that review is not done.
 - After merging another branch, run the full test suite before pushing. A local change to a shared attribute or helper can break code that only lives on the merged branch: green in git, red at runtime.
 
 ## Review Standard
