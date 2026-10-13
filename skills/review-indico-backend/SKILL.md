@@ -14,7 +14,13 @@ Check the touched Python files and their callers against every item.
 - Fail loudly instead of silently narrowing: abort when any requested id is not permitted.
 - Filter where data is loaded (query criteria), not with a check afterwards; remove mechanisms the filter makes redundant.
 - No single-use extraction; no abstraction "for later overrides".
-- Unreadable nested comprehensions become a named helper.
+- Unreadable nested comprehensions become a named helper; a loop that only appends becomes a comprehension (walrus for the filtered value), never `# noqa: PERF401`.
+- `@dataclass(frozen=True)` over `namedtuple`; plain defaults (`name: str = ''`, no `field()`), required attribute first so callers never pass `None, None`.
+- Deduplicate by key with a dict (`{r.email: r}`), not by hashing dataclasses; test the overlap case (same email from two sources).
+- Expensive work inside a send loop (template module, agenda query) is computed once or memoized with `memoize_request`.
+- Early return for the short branch, then flat code for the main one.
+- Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`.
+- Remove methods and imports a refactor left unused.
 - Functions that never touch `self` go to `util.py`.
 - One definition point for shared infrastructure (one `cache` classproperty, one permission tuple constant, one `is_gravatar` enum property instead of repeated membership checks).
 - Several handlers differing only in a parameter collapse into one with `any(...)`.
@@ -25,6 +31,9 @@ Check the touched Python files and their callers against every item.
 - New optional parameters are keyword-only (`*, flag=True`); check no caller passes the neighbours positionally and make those keyword-only too.
 - Argument order: the object acted on first (`add_users_to_group(group, users)`), then the rest.
 - Helpers do their own difference (`users - group.members`) so callers cannot misuse them; the name must not promise more than the body does.
+- State changes that must be logged go through explicit operations (`grant_admin(user)`, `revoke_admin(user)` in `operations.py`), never through property setters; manual and automated changes log separately.
+- Operations take `*, extra_log_data=None` and merge with `{**log_data, **(extra_log_data or {})}` or `dict(extra_log_data or {})`; never mutate the caller's dict.
+- CLI command names are set in the decorator (`@cli.command('create')`) when the function must be renamed.
 - No guard for values no caller passes (`if not fmt: return None` with no falsy caller).
 - Parenthesize `or` chains inside a walrus.
 - Reuse the local already computed (`user.email`, not `session.user.email` after `user = session.user`).
@@ -42,7 +51,9 @@ Check the touched Python files and their callers against every item.
 - Return richer data through a kwarg (`full=True`) instead of reading a side effect (a cache) back.
 - Derive capability from the data (stored attachments count equals attachments count) rather than from a config flag; do not block actions on a flag that only gates creation when the data already exists.
 - Display logic belongs in the template, not in the renderer or RH.
-- Service code tolerates no request context (`session.user if session else None`).
+- Service code tolerates no request context (`session.user if session else None`); test the Celery path, not only "send now".
+- Previews use the current user's name and email as sample data, not `<FIRST-NAME>` markers; webargs `location` is omitted when it is the form/json default.
+- Custom emails render through `emails/custom.html`; plain-text alternatives via `html_to_markdown(..., inline_links=False)`.
 - A changed signature lands on every override and subclass.
 - Prefer an attribute or keyword with default over a new positional argument when plugins subclass the class.
 - Index keys the code itself wrote (`data['body']`, `email['cc']`); `.get('x', [])` only for genuinely optional keys, never `.get('x') or []`.
@@ -109,6 +120,9 @@ Check the touched Python files and their callers against every item.
 - Forms referencing external accounts must load when the account disappeared; failing to save is fine.
 - Never mutate `field.data` in `validate_*`; normalize in `process_formdata` or `post_validate`.
 - Field definitions sit with the other fields, one kwarg per line when long; drop descriptions that restate the label.
+- Values the client never changes are form constructor kwargs (`def __init__(self, *args, event, mode, **kwargs)`), not hidden fields round-tripped through the browser.
+- Never append to `field.validators` or change `field.flags` in `__init__` (leaks into every instance); use `inject_validators` or `del self.field`.
+- Subjects and other non-HTML strings get no `strip_tags`; escape where they are rendered.
 - Check rendered field order after overriding an inherited field.
 
 ## Schemas (marshmallow)
@@ -126,7 +140,7 @@ Check the touched Python files and their callers against every item.
 - Filter soft-deleted parents at every level, with a test per level.
 - Query the subtype class (`RegistrationFormField`) for subtype-only constraints.
 - New FK to `User`: backref, alphabetized backref list, `merge_users` handling.
-- `#:` column docs. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`).
+- `#:` column docs; keep the blank line between columns and relationships. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters.
 - `column_property` changes that back an index update the index in `upgrade` and `downgrade`; `indico db_diff` must be empty.
 - Pick NULL or empty string, not both; NULL gets `CheckConstraint("col != ''")`.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
@@ -148,9 +162,10 @@ Check the touched Python files and their callers against every item.
 - No `flash()` in service methods or signal handlers (cloning, Celery). Log instead.
 - Static variant in the format string (meeting vs webinar) for Sentry grouping, `%s` for data; `# noqa: G004` on static f-strings.
 - Expected external rejections handled, not logged as warnings each run.
-- Errors say how to fix; system-level errors (admin disabled a feature) need no i18n.
+- Errors say how to fix; system-level errors (admin disabled a feature) need no i18n. "not allowed" over "not valid"; proofread grammar ("are entered").
 - Event log: module is the object ("Registration"), log only actual changes (compute added/removed before mutating).
-- Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text.
+- Log summaries are short ("Added to group {name}"); ids go in `meta` for filtering, not in the text. `data` keys are human-friendly (`'User ID'`); keys without a value (`IP` outside a request) are omitted, not set to `None`.
+- Email log records `alternatives` so re-sending reproduces the original multipart message.
 - External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
 - End-user warnings are one concrete sentence; no double spaces or typos in user strings.
 - Log arguments carry only what helps (no event id when it cannot be acted on).

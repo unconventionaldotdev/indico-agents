@@ -16,6 +16,8 @@ Check every touched `*_test.py` and `fixtures.py`.
 - Fixtures touching caches or globals clean up before and after.
 - No `request_context` + `session.set_session_user` when the code can run without a request; make the code tolerate it instead.
 - Long symbol lists become module imports (`reglists.RHRegistrationEdit`).
+- Helpers used only by tests live in `indico/testing/util.py` as private functions, not in `indico/util`.
+- Email templates get snapshot tests (`assert_email_snapshot`, `html=True` for the HTML part) covering every generated part.
 
 ## Assertions
 
