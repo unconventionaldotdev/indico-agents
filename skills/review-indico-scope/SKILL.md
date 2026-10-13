@@ -16,7 +16,8 @@ Run first. A PR that fails here gets no line-by-line review.
 - Core vs plugin: generic in core, service-specific in the plugin; a core hook needs a core consumer.
 - Infrastructure-provided secrets stay optional; the admin UI remains the default.
 - Incremental scope is fine; split follow-ups when asked, fold in small related checks when asked. Prefer the minimal change that avoids a refactor of adjacent code (a refresh hint over re-fetching state).
-- State the expected data volume of the first deployment when scaling is a known limit.
+- State the expected data volume of the first deployment when scaling is a known limit. Upstream retests list views against a production-size database; a behavior that only works on small instances gets redesigned (server-side filtering, bounded ranges) before merge.
+- When a UI direction is contested, propose the simplest model, let upstream and product decide, then implement that model fully (removing the toggle it replaces).
 - No migrations for pre-release data.
 - Changes to existing workflows are opt-in and off by default, or narrowed to the unambiguous case.
 - Permissions are granted narrowly; the description must not claim more than the code grants.
@@ -45,7 +46,7 @@ Run first. A PR that fails here gets no line-by-line review.
 ## Changelog And Versioning
 
 - Core: `CHANGES.rst` entry in every PR. Improvements or Bugfixes for user-visible, Internal Changes for admin or developer facing. Append at the end of the section. Follow-ups add their `:pr:` to the existing entry. ``(:pr:`N`, thanks :user:`login, org`)``. One short sentence, wrapped at the natural break (`thanks` stays on the first line); `:data:` role for settings.
-- One entry per feature; a missing feature is an Improvement, not a Bugfix; wording is short and user-facing. Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue.
+- One entry per feature; a missing feature is an Improvement, not a Bugfix; wording states the user-visible effect ("Allow linking a booking without exact date overlap"), never "Improve the X feature". Entry goes under the release being developed, not an older one. `:issue:` numbers are verified against the linked issue; no space before a comma in role lists.
 - No entry for internal building blocks with no user-visible effect yet; add it with the feature that uses them.
 - Plugins: README changelog bullet under the unreleased version (no new heading while the previous one is unreleased). Version tracks the first two Indico parts; new plugins start at `3.3-dev` with `### 3.3` / "Initial release". `-dev` may stay forever without PyPI releases. `dependencies = ['indico>=3.3.X.dev0']` when built against master.
 - README title "<Name> Plugin".
