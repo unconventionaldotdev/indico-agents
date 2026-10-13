@@ -155,7 +155,13 @@ Check the touched Python files and their callers against every item.
 - Schemas, args and selectors made obsolete by the final design are removed in the same PR.
 - RH docstrings describe what the handler does now, not the earlier design.
 - `@use_args(Schema)` with a positional `data` when the dict is passed on; `@use_kwargs` only when fields are consumed individually.
-- Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta`.
+- Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta` with a namespaced id key (`editing_tag_id`, not `tag_id`, so log filters never mix objects of two modules) and, for objects owned by an event or a category, a `log_realm` property. Every mutation of the object (create, clone, update, delete, publish, unpublish) is logged with the relevant flags in `data` (`Published`, `Notified`). Log before `db.session.delete(obj)`, not on the deleted object.
+- A formatted title that only suits log messages is `log_title`, not `verbose_title`.
+- `populate_from_dict(data, keys=ATTRS)` takes the dict itself, no `.keys()`. `make_diff_log` field specs give `{'title': ..., 'type': 'string'}` for strings and pass enum members raw.
+- Adding missing logging across a module is its own PR with its own changelog entry.
+- A toggle is two RHs with two URLs (`/publish` POST+GET for the dialog, `/unpublish` POST), never one RH switching on `?publish=true`. Alternate URL shapes come from locator variants (`@locator.filename`, `@locator.registrant`) referenced from `normalize_url_spec`; query args a locator provides are listed in `copy_query_args`.
+- Blueprint URL strings are never wrapped: `_bp.add_url_rule(` then the full URL on its own line.
+- Respect type hints when calling (a `list` parameter gets a list, not a set); no f-string around a single expression.
 - Signals receive the parsed `data`, not `request.json`; an empty payload after plugins ran is a no-op, not `BadRequest`.
 - Links embedding a capability (ticket link with registration token) are hidden from roles without it.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
@@ -207,13 +213,18 @@ Check the touched Python files and their callers against every item.
 - `data['x']` for fields with `load_default`.
 - Free-form metadata is `fields.Dict(keys=fields.Str())`; `null` rejected, empty is `{}`.
 - `fields.Pluck(RelatedSchema, 'attr', many=True)` over a `fields.Method` that maps a relationship by hand.
-- `load_default=lambda: []` for mutable defaults; `@pre_load` hooks copy `data` before popping keys.
+- `load_default=lambda: []` for mutable defaults (`load_default`, never `default`); `@pre_load` hooks `deepcopy` `data` before mutating nested dicts and guard missing keys (`if 'attributes' in data and 'type' in data`), with a comment when a library (`OneOfSchema`) forces the shape.
+- `fields.Int(strict=True)` where a string must be rejected; `fields.Dict(keys=..., values=...)`; `fields.List(fields.Nested(S))` rather than `Nested(S, many=True)` plus `data_key`.
+- Defaults per field type are computed by one rule on the server and the client alike (`checkbox` -> `False`, text -> `''`, dropdown -> option at `default`).
+- YAML written for humans keeps its order (`yaml.safe_dump(..., sort_keys=False)`).
+- A binary response never smuggles JSON in a custom header; return JSON with the base64 payload plus the data, or the file alone.
 - Backend regex validation mirrors the frontend one.
 
 ## SQLAlchemy And Migrations
 
 - `contains_eager` after an explicit join; join via relationships (`.join(Model.rel)`), `.with_parent()` where it fits.
 - Filter soft-deleted parents at every level, with a test per level.
+- An object that produced artifacts (a template behind generated documents) is soft-deleted: `is_deleted` column, `get_or_404(id, is_deleted=False)`, backrefs with a `primaryjoin` excluding deleted rows instead of `cascade='all, delete-orphan'`, every listing filtered. Ordered children sort with `attrgetter('parent.position', 'position')`.
 - Query the subtype class (`RegistrationFormField`) for subtype-only constraints.
 - New FK to `User`: backref, alphabetized backref list, `merge_users` handling.
 - `#:` column docs; keep the blank line between columns and relationships. `down_revision` points at the current head when the PR is opened and again before merge. `alembic` label on the PR; revision rebased at merge (filename date, `down_revision`); `op.add_column` calls fit on one line when under 120 characters.
@@ -230,6 +241,7 @@ Check the touched Python files and their callers against every item.
 - Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist; `export.yaml` orders the rows topologically so idrefs resolve on import.
 - Count queries on a large event before and after a list change; a per-row property that touches a relationship (latest comment date) turns a fixed number of queries into one per row. Compute it in SQL as a `column_property` with a correlated scalar subquery, registered in a module-level `@listens_for(orm.mapper, 'after_configured', once=True)` function (never inside the class), `deferred=True` plus `undefer()` when few views need it. A real column updated on every write is the fallback.
 - A derived check used in several places is a model property (`is_condition` for "others depend on me", `is_conditional` for "I depend on another"); `column_property` only when it must be filtered on or loaded in bulk.
+- Trailing comma only in single-element tuples: `methods=('POST', 'DELETE')`, `methods=('POST',)`.
 - Multi-line queries: either `(` on its own line or `(Model.query` with chained calls aligned under it; match the style of the adjacent queries in the file. `Model.query` first, one `.filter(...)` with one criterion per line, `.has_rows()` last. A query that fits on one line stays inline in the `if`; otherwise it gets its own statement.
 - `.one()` on lookups that cannot miss (soft-deleted rows still exist); no defensive `- {None}` or `or {}` without a reproducible case, and a comment when one exists.
 - Set intersection is `a & b`, never `bool(a.intersection(b))`. Subset checks are `keywords <= allowed`; "any invalid" is `invalid := values - allowed`; `sorted(a & b)` over list comprehensions with membership tests; `dict.setdefault` over `if key not in d`.
@@ -300,7 +312,8 @@ Check the touched Python files and their callers against every item.
 - Provider defaults verified (`approval_type`).
 - Standard primitives for hardening: `hmac.compare_digest`, `secrets`; no signatures in logs.
 - Scanner findings need a proof of concept or a reason; cheap hardening (`parseInt` on an id from the URL) is still accepted.
-- Signed file links via `File.signed_download_url` and `RHFileDownload`; check `UploadFileMixin` before writing an upload handler.
+- Signed file links via `File.signed_download_url` and `RHFileDownload`; check `UploadFileMixin` before writing an upload handler. Never put a signed (expiring) link in an email: use an endpoint protected by the recipient's token (registrant locator) or attach the file.
+- User-authored templates render in `SandboxedEnvironment(autoescape=True)`; `TemplateSyntaxError`, `TemplateRuntimeError`, `SecurityError` and `LookupError` become `UnprocessableEntity`.
 - Anything that signs values inside `url_for` (a URL converter) must be opt-in (`_sign=True` kwarg stored on `g`), because the URL signing endpoint builds URLs for arbitrary endpoints; a test asserts that endpoint rejects underscored args. Cache-busting slugs in URLs stay.
 - Picture sizes and similar magic numbers are module constants; `A if cond else B` without a negated condition.
 
