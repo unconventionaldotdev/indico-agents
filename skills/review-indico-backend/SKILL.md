@@ -19,7 +19,10 @@ Check the touched Python files and their callers against every item.
 - Deduplicate by key with a dict (`{r.email: r}`), not by hashing dataclasses; test the overlap case (same email from two sources).
 - Expensive work inside a send loop (template module, agenda query) is computed once or memoized with `memoize_request`.
 - Early return for the short branch, then flat code for the main one; a two-branch assignment is a ternary.
-- Truthiness checks (`if tags:`), never `len(x) > 0`.
+- Truthiness checks (`if tags:`), never `len(x) > 0`; `not all(...)` over `any(not ...)`.
+- `match` over if/elif chains on enums, with `case _: assert False` for the impossible branch.
+- Use the existing abstraction (`obj.protection_parent`) instead of `getattr` chains over known parent attributes.
+- Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment.
 - Short names everywhere (`all_tags`, not `all_tags_must_be_present`); `tpl` for template variables.
 - New public symbols are re-exported in the module `__init__` and listed in `__all__`.
 - Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`.
@@ -96,9 +99,11 @@ Check the touched Python files and their callers against every item.
 - Narrow permissions grant nothing beyond their purpose: logs, exports, configuration, legacy APIs stay with full management.
 - New helper endpoints start admin-only; loosen later when another consumer appears.
 - Object lookup in `_process_args` via `@use_kwargs({'obj': ModelField(Model, filter_deleted=True, required=True, data_key='obj_id')}, location='view_args')` with the kwarg named explicitly (never `**kwargs`), also instead of `Model.get(request.view_args[...])`; always call the base `_process_args` even when it is a no-op.
-- Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`.
+- Base methods are called explicitly (`RHBase._process_args(self)`), never through `super()`; no `__init__` on RHs, attributes are set in `_process_args`. Admin-only overrides of `_check_access` call the base first, then `raise Forbidden`.
+- Parallel families (file/picture upload, display/management) share the same base RH data (`self.field`); the public variant mirrors the management one with `normalize_url_spec` and `skipped_args`.
 - Child objects are loaded through the parent (`Model.query.with_parent(self.event).filter_by(id=...).first_or_404()`), one chained call per line; the model gets a `locator_property` including the parent id (on the concrete subclass when the base lacks it) and the RH declares `normalize_url_spec = {'locators': {lambda self: self.entry}}`.
 - `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending).
+- Keys from client-controlled or externally stored data are read with `.get()` so bad input fails with a validation error, not a `KeyError`.
 - The response to a mutation carries everything the UI must refresh (`has_pending_invitations`), not only the list.
 - "All" is the absence of the key or `None`, never an empty list.
 - A mode with its own filtering (linkable bookings) gets its own endpoint with bounded ints (`fields.Int(validate=validate.Range(min=0), load_default=0)`), not extra optional args on a paginated one; the server filters out what the user cannot act on, the client renders everything it receives.
@@ -160,6 +165,8 @@ Check the touched Python files and their callers against every item.
 - `column_property` changes that back an index update the index in `upgrade` and `downgrade`; `indico db_diff` must be empty.
 - Pick NULL or empty string, not both; NULL gets `CheckConstraint("col != ''")`.
 - Association tables declare `ondelete='CASCADE'` on both foreign keys; the closing parenthesis of `op.create_table` sits on the last argument line.
+- `index=True` on the column instead of separate `op.create_index`; `downgrade` does not drop indexes of a table it drops. Enum copies inside migrations match the model enum member for member. Constraints exist in both migration and model, or in neither (drop a uniqueness check when duplicates are harmless). Blank line after the title in the revision docstring.
+- Search over text columns: prefix match over substring, skip words under 3 chars, GIN/FTS index in the migration, results cached with `memoize_redis(ttl, versioned=True)` and the version bumped on writes.
 - New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).
 - Switching stored text from plain to HTML uses `RenderModeMixin` with a `render_mode` column (legacy rows stay plain text, new rows HTML), never a destructive data migration.
 - Encode invariants as CHECK constraints (e.g. `internal_name` required when `personal_data_type` is set) so edge cases such as cloning cannot produce bad rows.
@@ -188,6 +195,9 @@ Check the touched Python files and their callers against every item.
 - Email log records `alternatives` so re-sending reproduces the original multipart message.
 - Settings pages log changes: `changes = {k: (old[k], v) for k, v in form.data.items() if old[k] != v}`, then `AppLogEntry.log(..., data={'Changes': make_diff_log(changes, log_fields)})`; summary names the single changed field or says "Data updated". Extend `make_diff_log` when a new value type appears.
 - Global logging goes through `AppLogEntry.log()` (static, mirrors `Event.log`); nothing is monkeypatched onto `app`.
+- Generic logging hooks honor `quiet=True` and the object's `logging_disabled` state (event creation, cloning); implicit side effects (submitter rights on speakers) are logged quietly or not at all.
+- Code reachable from the CLI uses `session.user if session else None`; test with the `indico` CLI, where no request context exists.
+- Two values are two `data` keys, never squeezed into one key; hierarchical titles use a shared helper and separator. A new log realm gets its icon in `logs.scss`.
 - External sync code logs successes at `info` with the Indico ids and emails involved, so an action can be traced later; failures alone are not enough.
 - End-user warnings are one concrete sentence; no double spaces or typos in user strings.
 - Log arguments carry only what helps (no event id when it cannot be acted on).

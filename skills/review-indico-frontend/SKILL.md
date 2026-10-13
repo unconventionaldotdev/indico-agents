@@ -38,7 +38,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `styleName` over `className` + `:global()`.
 - Consistent casing with the endpoint; with few fields prefer snake_case over `camelize` exceptions.
 - All user text through `Translate` / `Translate.string`.
-- Exported components destructure props in the signature; optional callbacks are optional in the body too.
+- Exported components destructure props in the signature; optional callbacks are optional in the body too: define the handler unconditionally and pass `cb ? handler : null`, never `const handler = cb && (() => ...)`.
+- `FinalField` with `validate={null}` must keep the default required validator.
 - Pure helpers at module level, not inside the component.
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
 - Validators return their message; skip range validators on values the user did not change (manager-set values may be out of range).
@@ -66,6 +67,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `{{- x -}}` where output is inline; `data-no-qtip` on `title` attributes that must not open a qtip.
 - `url_for_plugin('.endpoint')` inside blueprints; shared URL values via `@blueprint.url_defaults`.
 - Template names describe the page; shared markup moves to a macro partial (`_name.html`).
+- Several possible parents: separate `{% extends %}` in an `if/elif` chain, not nested ternaries in one `extends`.
+- Side menu items: weight `-100` for entries that go last (logs); positive weights for the rest.
 - `_()` inside macro arguments (`{% trans %}` does not work there); plugin gettext in plugins.
 - Every counter or list uses the same filtered accessor.
 - Calls to action and links match the viewer's rights; a restricted role sees no link it cannot follow.
