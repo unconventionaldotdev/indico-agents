@@ -16,6 +16,8 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 - **Secrets and infrastructure config** stay optional from the admin's point of view. Forcing file-based configuration on web-generated secrets "won't get merged".
 - **Incremental scope is fine.** "For now it's enough to make the change here." Split the core follow-up out when asked, but include a small related check in the same PR when asked ("I think checking it here would be nice").
 - **Existing data and migrations.** Upstream does not ask for migrations of pre-release data.
+- **Breaking an existing workflow needs a switch.** Unconditional new behavior on existing forms (resetting approvals, pre-filling fields) becomes a per-form setting, off by default, or is narrowed to the case where it is clearly right (only custom uploaded pictures).
+- **Permissions are granted narrowly.** A "manage participants only" permission does not get logs or configuration; when the description claims more than the code grants, the code wins and the description is corrected.
 
 ## Consistency Of The Feature
 
@@ -35,7 +37,7 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 
 ## Changelog And Versioning
 
-- Core: every PR adds a `CHANGES.rst` entry. User-visible changes under Improvements or Bugfixes, admin or developer facing changes under Internal Changes (a raised form limit is internal). New entries are appended at the end of the section, not inserted at the top. A follow-up PR on the same feature adds its `:pr:` to the existing entry. Credit format: ``(:pr:`NNNN`, thanks :user:`login, org`)``.
+- Core: every PR adds a `CHANGES.rst` entry ("changelog entry please!" is a common approval message). User-visible changes under Improvements or Bugfixes, admin or developer facing changes under Internal Changes (a raised form limit is internal). New entries are appended at the end of the section, not inserted at the top ("new entries go there and not to the top"). A follow-up PR on the same feature adds its `:pr:` to the existing entry. Credit format: ``(:pr:`NNNN`, thanks :user:`login, org`)``. Entries are one short sentence wrapped at the file's width: "Log registration tag changes in the event log", not a restatement of the implementation.
 - Plugins: every PR adds a bullet to the plugin README changelog under the upcoming version. Bullets move between version headings and `pyproject.toml` is bumped at release; a `-dev` suffix in a contrib plugin is "not strictly necessary since you should be building w/ a version suffix anyway".
 - Plugin README title: "<Name> Plugin", no "Indico" prefix.
 
@@ -65,4 +67,6 @@ Run this layer first. Upstream questions the premise before the code, and a PR t
 - Reply to each thread with the commit that addressed it and, when it is not self-evident, how it was verified.
 - Disagree with reasoning and the real-world constraint, then let upstream decide; a documented tradeoff gets "Fine for now" and is remembered.
 - When upstream reports it could not reproduce, debug in the thread and post the exact finding (the `type=3` meeting drops the field) rather than "works for me".
+- When upstream posts a patch and says "it'd be good if you could also give it a try", apply it, test it and say so ("Tested on my end. All good.").
+- Other contributors may test the branch and post fixes; incorporate them with credit in the thread and re-check the scenarios they hit.
 - Close a PR yourself when the premise fails ("the audio type can be configured in the Zoom tenant settings, so exposing it per meeting makes no sense").

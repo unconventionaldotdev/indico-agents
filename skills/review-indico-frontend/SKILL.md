@@ -16,6 +16,10 @@ Items observed in upstream review of contributor PRs and in fixes reviewers push
 - **State shape:** keep props and state snake_case or camelCase consistently with how the endpoint serializes; do not mix `camelize` on one endpoint with snake_case elsewhere.
 - **Labels and messages** go through `Translate` / `Translate.string`. No bare literals a user will read.
 - **Test it with long content.** Truncated names, overflowing titles and empty lists are the states upstream clicks through first.
+- **Pure helpers live outside the component.** A formatter that only reads its arguments is defined at module level; inside the component it forces aliases like `name_` to avoid shadowing props.
+- **Validators skip values the user did not change.** A manager can store an accommodation date outside the user-visible range; the user's next edit must not be blocked by client-side range validation on that untouched value. Compare with the existing value before running range validators.
+- **Field labels are plain words.** "Code" next to an affiliation name is ambiguous; "Short name / abbreviation" is not. Related short fields can share a row.
+- **Warn before surprising consequences.** When saving will reset an approval or require re-moderation, a `message_box('warning')` above the form says so in one sentence.
 
 ## SCSS And CSS Modules
 

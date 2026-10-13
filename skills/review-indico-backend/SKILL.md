@@ -17,11 +17,19 @@ Every item below comes from a finding raised in upstream review of contributor P
 - **Define shared infrastructure once.** One `cache` classproperty on the plugin (`make_scoped_cache(f'plugin/{cls.name}')`) instead of `make_scoped_cache` calls spread over modules.
 - **Constants:** module level constants go right after the imports, never in the middle of a file. A value used once does not become a constant; inline it with a short comment ("List Users returns up to 2000 per page").
 - **Class-level access when no instance is needed.** `plugin_config` became a `cached_classproperty` so `FooPlugin.plugin_config.API_KEY` works; the docs were updated in the same step.
+- **Plain default arguments.** `template_name='forms/_form.html'` in the signature; the `None` plus `if x is None` dance is reserved for mutable defaults and translated strings.
+- **One query for the set, not one query per candidate.** Checking "is this choice used?" with a query inside a loop over choices gets "IMHO it would be much better to query a list of used choice values". Same for tags, registrations, users: fetch the set once, then test membership in Python.
+- **Do not swallow unexpected failures from external services.** Wrapping JSON parsing of an error response in a try/except "isn't useful": an exception for an unexpected response is more informative than silent handling, and an uncaught exception does not crash anything. Catch only the errors you handle.
+- **Work without a request context.** Service functions that may run from the shell or Celery guard `session.user if session else None` instead of assuming a request.
+- **Keep subclasses in sync.** A new parameter on `create_mm_field` also lands on `InvalidRegistrationFormField.create_mm_field` and every other override. Grep the method name before finishing.
+- **Plugin compatibility shapes the API.** Passing a new flag through `self.management` instead of a new `get_validators` argument is accepted because the latter "would be much more likely to break plugins adding custom fields". When a core signature is used by plugin subclasses, prefer an attribute or a keyword with a default.
+- **Line length is 120.** A statement that fits in 120 characters stays on one line; "Remove unnecessary line break" is a real reviewer commit. Long boolean expressions use the parenthesized form with one operand per line and the operator at the line start.
 
 ## Naming And Comments
 
 - Names carry the intent so the comment can go: `_check_unique_title_in_section` replaces `# check unique title in section`. A comment that restates the method name is removed.
-- Private helpers get the `_` prefix.
+- Private helpers get the `_` prefix. Attributes follow the class they live in: when nothing else in the class is marked internal, a new `self._management` loses the underscore.
+- User-facing labels are reviewed as words, not identifiers: "Code" on an affiliation form is "a bit misleading"; "Short name / abbreviation" says what goes there. Changelog entries get the same treatment ("Add a "Code" (short name) to predefined affiliations").
 - Siblings share a naming scheme: `auto_register` and `auto_checkin`, not `webhook_checkin`.
 - Ambiguous locals get a precise name: `page_token`, not `token`, when a token of another kind exists nearby.
 - No underscored import aliases (`import hmac as _hmac`): "Why are these imports underscored?"
@@ -73,6 +81,7 @@ Every item below comes from a finding raised in upstream review of contributor P
 - Queries about a subtype use the subtype class (`RegistrationFormField`, not `RegistrationFormItem`) so sections do not match field-only constraints. Reproduce in master before claiming the wider scope.
 - A new FK into `User` (or any core model) needs the backref, the entry in the model's alphabetized backref comment list, and handling in `merge_users` so the column does not go stale.
 - Columns get `#:` doc comments. Migration PRs carry the `alembic` label; the revision gets rebased at merge time (filename date and `down_revision`).
+- Changing a `column_property` that backs an index (`searchable_names`) changes the index too: the revision drops and recreates it in `upgrade` and `downgrade`, and `indico db_diff` must come back empty before the PR is ready. When the diff refuses to go away, express the property closer to the SQL the database reports.
 - Bulk code paths issue one query per sync, not one per item: build the set of active registrations once and reuse it.
 
 ## Config And Startup
@@ -89,6 +98,8 @@ Every item below comes from a finding raised in upstream review of contributor P
 - Log messages embed the static variant in the format string (meeting vs webinar) so Sentry groups them separately, and keep `%s` for the variable data; an f-string for the static part carries `# noqa: G004`.
 - Expected external rejections (host cannot register, room already deleted) are filtered or handled, not logged as warnings on every run.
 - Error messages tell the user how to fix the situation, especially when the failure is otherwise obscure (a co-host without an account).
+- Event log entries use the module of the object ("Registration"), not of the feature ("Tags"), and record only what changed: compute `added = add - remove - reg.tags` and `removed = reg.tags & remove` before mutating, so a bulk action on registrations that already carry the tag logs nothing for them.
+- Warnings shown to end users are short and concrete: "If you modify this registration, it needs to be approved again by the event organizer." beats two sentences about status resets.
 
 ## External Services And Performance
 
@@ -104,3 +115,14 @@ Every item below comes from a finding raised in upstream review of contributor P
 - Secrets never reach the browser once they come from configuration.
 - Scoped endpoints: a plugin endpoint is bound to an event, category or registration form; a global read leaks across events.
 - Access-control defaults are checked against the provider's semantics (`approval_type=0` let anyone with the link self-approve into a meeting).
+- A narrower management permission does not inherit side doors: logs, exports and configuration stay with full management. "Logs should remain manager-only." The RH that serves them must check the stronger permission, not just hide the button.
+- Hardening is welcome when it is the standard primitive: `hmac.compare_digest` for signatures, `secrets` for generated passcodes, no signature values in logs.
+
+## Behavior Changes And State
+
+- A change that alters an existing workflow (resetting approval on modification) ships as an opt-in setting, off by default: "I believe this should be configurable (and off by default)." Communities differ; the default protects the majority.
+- Walk the state machine with payment involved before claiming it works: register, approve, mark as paid, trigger the reset, approve again; the registration must end `complete`, not `unpaid`.
+- Users get a warning before an action with a surprising consequence; silent resets "come as a complete surprise".
+- Pre-filled defaults are only offered when they are what the user would pick: a custom uploaded profile picture yes, a gravatar or generated initial no, because "users tend to leave defaults".
+- Keep the source format when converting data: a 256x256 PNG profile picture is not re-encoded as JPEG; add a target-format argument to the shared helper instead.
+- Every entry point that builds the same payload gets the new behavior: user registration, manager registration on behalf, bulk registration from user accounts. Missing one was found by another contributor, not by tests.
