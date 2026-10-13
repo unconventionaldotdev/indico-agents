@@ -23,7 +23,8 @@ Run first. A PR that fails here gets no line-by-line review.
 - Permissions are granted narrowly; the description must not claim more than the code grants.
 - Instance-wide constraints that collide on large installations are rejected; plugins can add stricter checks via schema signals.
 - Constraints that are impossible to add later (consistency within an event) are worth adding now.
-- Bugfixes found while building a feature ship as a separate PR with their own changelog entry; so does a follow-up idea raised mid-review.
+- Bugfixes found while building a feature ship as a separate PR with their own changelog entry; so does a follow-up idea raised mid-review. Two concerns in one PR (rate limiting and password reset flow) get split when asked.
+- A change that needs a library change (`flask-multipass`) lists the related PRs with checkboxes and the required version bump in the description, and waits for the bump instead of a workaround.
 - Noise is a product bug: a log or notification fired by an implicit, frequent action gets silenced before merge.
 
 ## Consistency
