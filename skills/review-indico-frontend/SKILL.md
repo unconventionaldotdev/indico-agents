@@ -93,7 +93,13 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Conditionally rendered `Final*` fields unregister on unmount and lose their value; hide with CSS or keep mounted.
 - Identifier inputs reject spaces and uppercase; help text states the real uniqueness scope.
 - Dialogs autofocus the first input; related short fields share a row.
-- Mount React from a custom element (`customElements.define('ind-...')`) with attributes, not `window.setupX()` plus inline script.
+- Mount React from a custom element (`customElements.define('ind-...')`) with attributes, not `window.setupX()` plus inline script. No `window.` prefix on globals (`URL.createObjectURL`).
+- Nothing loads from a CDN (pdf.js worker, editor assets): ship it through webpack (`CopyWebpackPlugin` into `dist/js`, `workerSrc` pointing there). A heavy module is lazy-loaded behind a wrapper component with a `Loader` (`await import(...)` in `useEffect`), the inner component reusing `Wrapper.propTypes`.
+- Admin-only code goes in its own bundle (`module.json` `partials: {admin: './admin.js'}`, page bundles `module_x.admin.js`) so regular pages do not load it. Empty `index.js` files are deleted.
+- `Translate.string('Template "{title}" was added', {title})`, never a template literal inside `Translate.string`.
+- Unmounting a FinalForm drops its state; no `form.reset()` on cancel. A one-line redux action is duplicated under a fitting name rather than reused under a misleading one.
+- A tooltip with a date shows just the date in a `<time>` element, no translatable "On {date}". Destructure related values together (`const {createdDt, modifiedDt} = block`).
+- `data-*` attributes carry values the JS reads (sorting text), never an object repr.
 - No new features in the `WTF*` legacy wrappers; new behavior is React-based.
 - Field values stay light (identifiers only); extra data is resolved server-side, not through callbacks that leak field internals.
 - New components are generic (a file drop that hands the file to a callback), not bound to one workflow.
@@ -104,7 +110,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 ## SCSS
 
-- A `.module.scss` that is all `:global` is a plain `.scss`; it never styles document-wide elements (`body`).
+- A `.module.scss` that is all `:global` is a plain `.scss`; it never styles document-wide elements (`body`). `:global(.lib-class)` rules nest inside the component's own class, never at the top level.
 - No inline `<style>`; reuse existing classes before adding new ones.
 - Never widen or restyle shared legacy classes (`exclusivePopup`); scope through `ajaxDialog({dialogClasses: 'editor-output'})` or a module stylesheet.
 - Markup and classes on event display pages are a public API for custom stylesheets: keep element types (`span.conference-title-link`) and floats, test against events with custom CSS, and ship a new layout behind an opt-in setting with the old CSS as default.
