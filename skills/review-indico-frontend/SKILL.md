@@ -17,6 +17,11 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - No flash of empty state between load and render; pass existing data in instead of refetching; verify the loader is visible with a slowed request.
 - After a mutation update local data or show "new entries available, refresh" rather than a full page reload or a refetch that resets the view.
 - Reuse an existing action to reset a flag instead of adding one.
+- Shared helpers move to `indico/web/client/js/react/util/` and get imported; no copies.
+- Selectors keep boolean fallbacks (`staticData.paid || false`) for keys absent in other modes; no unrelated fallback removals.
+- Selection state is filtered against the current list so deleted items drop out; name id sets `xIds`.
+- Optional payload keys are omitted (`selected ? {ids: selected} : {}`), never sent as `[]`.
+- Format with biome (unquoted object keys where valid).
 - Show the parser's own error (`JSON.parse` message) instead of a generic one.
 - Persisting filter state (`localStorage` name) is optional; skip it where remembering filters makes no sense.
 - No `#id` filter on objects without a friendly id.
@@ -57,8 +62,12 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `_()` inside macro arguments (`{% trans %}` does not work there); plugin gettext in plugins.
 - Every counter or list uses the same filtered accessor.
 - Calls to action and links match the viewer's rights; a restricted role sees no link it cannot follow.
+- A disabled button explains why in its own `title`, not through a separate info icon; every visible string, button text included, goes through `{% trans %}`.
+- `url_for` with the locator object only (`url_for('.resend', entry)`), no redundant parent argument.
+- Data attributes read from optional objects (`invitation.lock_email`) are guarded; load the page without that object.
 - Attribute continuation lines align with the first attribute; no blank line after a block opener; tag contents indented; no collapsing of multi-line markup into one long line.
 - Plugin output reuses the core look (the standard join button, not a raw URL); pick the best available template hook and note the better one for later.
+- HTML emails: indent normally, `<h3>` for section titles, `<ul>` for lists, `<a>` for links (link the title), no `trim`/`indent` filters or blank-line hacks carried over from the text template.
 
 ## Verification
 
