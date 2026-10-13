@@ -101,6 +101,9 @@ Check the touched Python files and their callers against every item.
 - `BadRequest` for a wrong object type or state, `Forbidden` only for permission failures; the server rejects what the UI disables (attachments present, still pending).
 - The response to a mutation carries everything the UI must refresh (`has_pending_invitations`), not only the list.
 - "All" is the absence of the key or `None`, never an empty list.
+- A mode with its own filtering (linkable bookings) gets its own endpoint with bounded ints (`fields.Int(validate=validate.Range(min=0), load_default=0)`), not extra optional args on a paginated one; the server filters out what the user cannot act on, the client renders everything it receives.
+- Query criteria are built per branch as full expressions (`(A > x) & (B <= y)`), never by mutating `criteria[0]` with `db.and_`. Prefer inclusive comparisons over client-side offset hacks unless pagination needs them.
+- Schemas, args and selectors made obsolete by the final design are removed in the same PR.
 - RH docstrings describe what the handler does now, not the earlier design.
 - `@use_args(Schema)` with a positional `data` when the dict is passed on; `@use_kwargs` only when fields are consumed individually.
 - Admin-level changes are logged with `AppLogEntry.log()`; models get a `log()` method that prefills `meta`.

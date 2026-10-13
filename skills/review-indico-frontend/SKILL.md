@@ -22,10 +22,17 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Selection state is filtered against the current list so deleted items drop out; name id sets `xIds`.
 - Optional payload keys are omitted (`selected ? {ids: selected} : {}`), never sent as `[]`.
 - Format with biome (unquoted object keys where valid).
+- Redux: actions are verbs (`toggleX`, `addLater`), state slices and props are nouns or booleans (`showX`, `earlier`). Mode-specific state lives in that mode's slice. Thunks read `getState()` instead of taking state as parameters. A value the action never carries is a constant in the reducer, not `action.x || false`; no fallback for state that is always initialized.
+- Build request params per branch (`let url, params, body;` then one block per mode), not by accumulating across steps.
+- Mode-specific filters, controls and refetch triggers are gated on the mode (`state.linking.type && ...`); leaving the mode clears its state and refetches the regular data.
+- Filtered modes replace the list on every fetch instead of merging; no endless scrolling on heavily filtered results (fires immediately, duplicates on rapid toggling).
+- Range controls show the current range ("Showing bookings up to N days before the event") and sit at the top and bottom of the list; link text names the action ("Load earlier bookings", not "Load more"). `PluralTranslate` even when the count is never 1 in English.
+- Clickable `<a>` gets `href="#"` plus `preventDefault` so it is tabbable.
 - Show the parser's own error (`JSON.parse` message) instead of a generic one.
 - Persisting filter state (`localStorage` name) is optional; skip it where remembering filters makes no sense.
 - No `#id` filter on objects without a friendly id.
-- Test with large datasets (thousands of rows) before claiming a list scales; filter on input is fine for small lists only.
+- Test with large datasets (thousands of rows) before claiming a list scales; filter on input is fine for small lists only. Watch the request log: a view must not fire a chain of requests on load.
+- Two visual states at most: actionable (white, with button) and not actionable (greyed, no button); a third shade confuses users.
 - Remove what the change made redundant (a `title` replaces `TooltipIfTruncated`; one combined string instead of two tooltips).
 - No no-op handlers (`preventDefault` on elements without default behavior).
 - `styleName` over `className` + `:global()`.
