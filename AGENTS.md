@@ -28,7 +28,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 - `add-indico-rh`: add a request handler (endpoint) to an Indico module
 - `bump-indico-submodule`: move the host's Indico submodule pointer forward
 - `locate-in-indico`: find where code lives in the `indico/` tree before editing
-- `review-indico-pr`: review an Indico change against upstream review standards and apply the agreed fixes
+- `review-indico-pr`: review an Indico change against upstream review standards; fix the findings locally on own work, post them as review comments on a teammate's PR
 - `review-indico-scope`: scope, description, changelog, packaging and process layer of the review
 - `review-indico-backend`: Python, SQLAlchemy, forms, schemas, signals, config and security layer of the review
 - `review-indico-frontend`: React, SCSS, Jinja and i18n layer of the review

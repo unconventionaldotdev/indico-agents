@@ -1,6 +1,6 @@
 ---
 name: review-indico-pr
-description: Review an Indico core or plugin change against upstream review standards, then walk the developer through each finding and apply the agreed fix locally. Works on an open PR, on the current branch (committed and uncommitted changes) against master before a PR exists, or on the commits about to be pushed. Use before every push, before opening or requesting upstream review of an Indico change, or when reviewing a teammate's Indico PR.
+description: Review an Indico core or plugin change against upstream review standards. On the developer's own work (the current branch, the commits about to be pushed, or their own PR) it fixes the findings locally, all at once or one by one as the developer chooses; on a teammate's PR it posts the findings as review comments on GitHub. Use before every push, before opening or requesting upstream review of an Indico change, or when reviewing a teammate's Indico PR.
 ---
 
 # review-indico-pr
@@ -25,7 +25,7 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 ## Workflow
 
 1. **Target.** Three modes:
-   - **PR mode** (a PR number or URL is given): `gh pr view <n> --json number,title,body,baseRefName,headRefOid,baseRefOid,url,author,isDraft`, check the branch out, diff against the merge base with the base branch. Review threads already on the PR count as context, not as findings to repeat.
+   - **PR mode** (a PR number or URL is given): `gh pr view <n> --json number,title,body,baseRefName,headRefOid,baseRefOid,url,author,isDraft`, check the branch out, diff against the merge base with the base branch. Review threads already on the PR count as context, not as findings to repeat. Compare `author.login` with `gh api user --jq .login`: the developer's own PR is **own work** and ends in local fixes like the other two modes; someone else's PR is a **teammate review** and ends in GitHub comments, never in local edits to their branch.
    - **Branch mode** (no PR yet, the default when the developer is on a feature branch): the change set is everything on the branch plus the working tree, committed or not. Locate the base remote (`upstream` when it exists, else `origin`), `git fetch` it, then `git diff $(git merge-base HEAD <remote>/master)` for tracked changes and `git status --porcelain` for untracked files, which are read whole. Never stash, checkout or otherwise touch the working tree. The description and changelog checks run on what exists (commit messages, `CHANGES.rst` or the plugin README diff); missing ones are findings at the "Reviewer would fix" level with a draft text, since the PR description is still to be written.
    - **Push mode** (the developer is about to push): the change set is the commits not yet on the remote branch. `git fetch` the push remote, then `git diff <remote>/<branch>..HEAD` when the branch exists there, else the branch mode diff against master. Uncommitted changes are out of scope: they are not being pushed. Findings fixed here go in a new commit, never an amend, so the review covers exactly what leaves the machine.
    In every mode identify the repository kind (core, `indico-plugins`, `indico-plugins-contrib`, a private plugin) because changelog, commit and packaging rules differ.
@@ -59,14 +59,16 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 
    The table holds Blocking and Should fix. Preference and Reviewer would fix go below it as one compact list, one line each, so the findings that decide the review stay visible; a long tail of minor findings dilutes them.
 
-5. **Walk through** one finding at a time, highest level first: code with context, the comment in upstream voice, the fix as a diff (GitHub suggestion block when under three lines), then `AskUserQuestion`: Apply as suggested / Apply differently / Skip. No edits before the developer picks. No batching.
-6. **Apply.** Failing test first when the area has tests (`../write-indico-test/SKILL.md`). Surgical edits. Re-run the narrowest test and the linters. Remove what the fix orphaned.
+5. **Choose the outcome by mode.** The findings are on the table; what happens to them depends on whose work it is.
+   - **Own work** (branch mode, push mode, own PR): one `AskUserQuestion` with two options: *Fix everything* (apply every Blocking, Should fix and Reviewer would fix finding as proposed, list Preferences as skipped unless the developer adds them) or *Walk through one by one* (for each finding, highest level first: code with context, the comment in upstream voice, the fix as a diff, then Apply as suggested / Apply differently / Skip). No edits before the developer answers. Then step 6.
+   - **Teammate review** (a PR by someone else): no local edits. Draft one review comment per finding in upstream voice (step "Voice"), anchored to the file and line, with a GitHub suggestion block when the fix is under three lines, plus a short summary comment stating the top-level remark and the manual checks. Show the full draft set, then one `AskUserQuestion`: *Post as a review* (one `gh api` review with all comments, event `COMMENT`, or `REQUEST_CHANGES` when a Blocking finding exists) / *Post only selected ones* / *Do not post*. Post exactly what was confirmed; never post Preferences the developer did not pick. Then step 8.
+6. **Apply.** Failing test first when the area has tests (`../write-indico-test/SKILL.md`). Surgical edits. Re-run the narrowest test and the linters. Remove what the fix orphaned. In *Fix everything* mode report each applied finding in one line as it lands, and stop to ask when a fix turns out to need a design decision the finding did not anticipate.
 7. **Verify as CI would.** After the last applied fix, run what the repository's CI runs and report the result; not green means the review is not finished:
    - Core: `pre-commit run --files <changed files>` (ruff, eslint, prettier, stylelint, headers), `pytest` on every test module whose package was touched (full `pytest` when models, migrations or shared helpers changed), `npm run lint` when JS/SCSS changed, `indico db_diff` when models changed (must print nothing).
    - Plugins: `ruff check` and `ruff format --check` on the plugin, `pytest <plugin dir>`, `npm run lint` when JS changed, the plugin's `tests` workflow when a core version bump is involved.
    - Private hosts: the commands and fixtures listed in the host repository instructions.
    Fix every failure the review introduced; a pre-existing failure is reported with its output, never silenced.
-8. **Close** with fixed findings, skipped findings and the reason given, and what still needs a manual check (browser, external service). Draft GitHub comments only on request; ask before posting.
+8. **Close.** Own work: fixed findings, skipped findings with the reason given, the verification result, and what still needs a manual check (browser, external service). Teammate review: the URL of the posted review, the findings left unposted and why, and the manual checks the author should run.
 
 ## Voice
 
@@ -79,8 +81,8 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
 
 ## Guardrails
 
-- Never edit before the developer picks an option.
-- Never commit, push or post without an explicit request.
+- Never edit before the developer picks an option; never edit a teammate's branch at all.
+- Never commit or push without an explicit request. Post to GitHub only the comments the developer confirmed in step 5.
 - Verify every finding against the full file and callers before reporting it.
 - Before calling a branch dead, a check redundant or a base attribute unused, read the helper the code actually calls and the full body of the class it extends; cite that code, never a sibling helper that looks similar.
 - A finding that undoes a rename, a split, a rewrap or an icon choice first checks whether the current shape was asked for in an earlier review round (PR mode: the existing threads; branch and push mode: the developer). If it was, drop the finding.
