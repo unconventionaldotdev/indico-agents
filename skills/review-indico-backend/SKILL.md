@@ -301,6 +301,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A new RH delivering an existing artifact in another form subclasses the artifact's RH (`RHTicketGoogleWallet(RHTicketDownload)`) so `_process_args` and `_check_access` stay shared; when unavailable it raises `NotFound('...')`.
 - A management endpoint that already serves the generic case (file download) is reused for the new subtype; a dedicated RH only where handling differs.
 - Mixins tied to another module's service (`TokenAccessMixin`, `SERVICE_ALLOWED`) never land on RHs of a module without such a service.
+- Two RHs or URL rules that differ only by model (permission info for rooms and for locations) are an accepted shape; do not propose merging them through an `<any(...)>` URL argument unless the module already uses that pattern.
 
 ### Access checks and processing
 
@@ -331,7 +332,8 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A list endpoint over event children applies `can_access(session.user)` per item; event access does not imply access to every child.
 - Permission-based redirects happen inside the RH, not by rewriting menu targets.
 - Links embedding a capability (a ticket link with the registration token) are hidden from roles without it.
-- A model method that only wraps `can_manage(...)` or `is_admin(...)` is removed; callers (schemas, RHs) use `can_manage` directly, and the model sets `is_user_admin` so no caller needs an extra admin check.
+- A model method that only forwards to `can_manage(...)` or repeats its admin fallback (`can_edit`) is removed; callers (schemas, RHs) use `can_manage` directly, and the model sets `is_user_admin` so no caller needs an extra admin check. A method encoding a narrower policy than management (`can_delete` restricted to admins) stays, and the schema keeps calling it.
+- When a model gains `is_user_admin`, grep every `rb_is_admin(user)` paired with `obj.can_manage(user)` on that model and its children; each pair collapses to `can_manage` alone.
 
 ### Arguments and parsing
 
@@ -455,7 +457,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - `event.updated` is not reliable for date changes (auto-extension by moving a contribution bypasses it); date-dependent sync handles `event.times_changed`, or a comment says why it is unnecessary.
 - A handler on a per-registration signal checks that registration's own form flag, not an event-wide query.
 - Plugins extend data returned by a hook (`qr_data.update(...)` with each handler's dict); they never replace it.
-- A placeholder context whose signal handler declares kwargs no placeholder reads gives them defaults in the handler; call sites call `get_sorted_placeholders(context)` and `serialize()` without dummy `None` arguments.
+- A placeholder context whose signal handler declares kwargs no placeholder reads gives them defaults in the handler; call sites call `get_sorted_placeholders(context)` and `serialize()` without dummy `None` arguments. Sweep every placeholder call in the hunk together (`get_sorted_placeholders`, `serialize`, `render_placeholder_info`, `get_missing_placeholders`); one fixed call next to one unfixed call is the usual miss.
 
 ### Plugin extension points
 
@@ -648,6 +650,8 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - First and last of an ordered relationship come from one ordered query indexed `[0]` and `[-1]`, never two `next(...)` scans over differently ordered iterations; the emptiness guard is `if not any(occ.is_valid for occ in ...)`.
 - One query for the set, then membership in Python; never a query per candidate inside a loop, and one query per bulk sync, not per item.
 - Removing a relationship filter (`primaryjoin`) means auditing every consumer of that relationship.
+- A model method or helper never calls `db.session.commit()`; the request wrapper commits at the end, and an early commit surprises callers and tests.
+- Prefer the parent's relationship collection (`event.registration_forms`) over a `with_parent()` query when no extra criteria or eager loading are needed; the relationship already encodes the soft-deletion filter.
 
 ### Eager loading
 
@@ -684,6 +688,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - New relationships on a cloned model update its `EventCloner` (`uses`, mapping through `shared_data`, skip when the dependency was not cloned).
 - Row references between items of the same parent: the cloner maps old ids to new ones in a second pass after all items exist.
 - Ids stored in JSON data that reference event objects are remapped in the cloner through `shared_data`, reset to `[]` when the dependency cloner did not run, and entries whose target no longer exists are dropped, never left as `None`.
+- Cloning an object copies its new relation (a link to a form, a parent reference) unless the target lies outside the clone's scope; a clone that silently drops the link is a finding.
 
 ### Alembic revisions
 
@@ -905,6 +910,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - A view scoped to a child object (one session's timetable) has no parent context: display decisions derived from the parent are forced to the standalone-sensible value.
 - An action that needs an explanation for its recipient (request changes) cannot be fired without a comment; the bulk path gets the same dialog as the single one.
 - Features whose result reaches users without an account must deliver it where those users can see it (registration summary via token link).
+- A constraint enforced when linking two objects (template to form, front to backside) is enforced on every surface that can create either side of the relation, pickers that select the other side included.
 
 ### Warnings and wording
 

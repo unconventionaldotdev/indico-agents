@@ -26,6 +26,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
 - Per-type behavior (`showIfOptions`, `getDataForCondition`) lives in the field registry, not in `if/else` chains on `inputType`.
 - Page-level widget scripts tolerate the widget markup being absent or reduced (a disabled variant on management pages): null-check the root lookup or return early.
+- Values read from the same object are destructured in one statement; a second `const {x} = this.props` right after the main unpacking joins it (`booking, booking: {a, b}` or one separate statement for the parent).
 
 ### Shared components and reuse
 
