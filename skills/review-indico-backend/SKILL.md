@@ -126,7 +126,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - Enums are `IndicoIntEnum` / `IndicoEnum`, never bare `(int, Enum)`.
 - Option-like enums are `RichStrEnum` with `auto()` members and a `__titles__` dict.
 - Titles nobody displays are removed together with their `_()` markers; the enum then becomes `IndicoIntEnum`, not `RichIntEnum`.
-- Query-string choices are an `IndicoStrEnum` with `auto()`, never a nested `(Enum)` with int values.
+- Request-arg choices parsed with `fields.Enum` are `IndicoEnum` (parsed by name), never a nested `(Enum)` with int values.
 - Behavior of enum options is documented on the enum (`__titles__`, docstring), not in a settings dict comment.
 - Values derived from a member are `@property` named by what they return (`delimiter`, not `char()`).
 - A member classification lives on the enum as a property (`RevisionType.is_editor_action`); the model exposes it under a precise name (`is_editor_revision`), not a method listing members.
