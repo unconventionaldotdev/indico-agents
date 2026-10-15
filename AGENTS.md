@@ -17,7 +17,7 @@ These instructions apply to Indico-based applications and the host repositories 
 1. Read `CONVENTIONS.md` for the shared baseline.
 2. Read host repository instructions (deeper `AGENTS.md` files, `CLAUDE.md`, or files under `.claude/`) for repository-specific rules.
 3. Check the Available Skills below; prefer a matching skill over a manual approach.
-4. Inspect nearby code before adding new files.
+4. Inspect nearby code, Indico core, and sibling plugins for established patterns before adding files or custom mechanisms.
 5. Keep changes surgical and scoped to the requested task.
 
 ## Available Skills
@@ -34,6 +34,7 @@ This repository ships skills under `skills/` (installed at `.agents/skills/`). P
 - `review-indico-frontend`: React, SCSS, Jinja and i18n layer of the review
 - `review-indico-tests`: pytest conventions and fixture layer of the review
 - `write-indico-test`: write a pytest test for Indico code (test-first)
+- `write-indico-pr`: write or revise a PR title and description for Indico-related repositories
 
 ## Coding And Testing
 

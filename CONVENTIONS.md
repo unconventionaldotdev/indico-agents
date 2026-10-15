@@ -13,6 +13,8 @@ Test-first. No exceptions for production code.
 3. **Green**: write the simplest production code that makes the test pass. Nothing more.
 4. **Verify green**: run the relevant test module and confirm clean output with no new warnings.
 5. **Refactor**: only after green. Keep tests green throughout.
+6. **Review tests**: after implementation, evaluate every added test for relevance and useful coverage. Remove redundant
+   tests, tests of framework guarantees, and tests that merely mirror the implementation; rerun the remaining tests.
 
 If production code was written before the test, delete it and start over. The test must exist first.
 
@@ -75,7 +77,7 @@ Write tests that earn their keep:
 
 ### Client-Side Tests
 
-- Frontend changes ship a jest spec alongside the component, under `client/js/**/__tests__/*.spec.js` or the host
+- Frontend changes ship a jest spec alongside the component, under `client/js/**/__tests__/*.spec.ts` (or `.spec.tsx`) or the host
   repository's equivalent location.
 - Name `it()` blocks as behavior sentences ("renders the join button when the meeting is live"), not implementation
   notes.
@@ -93,8 +95,17 @@ When the host repository does not define commands, use the standard toolchain fo
 For fast feedback, scope direct commands to the changed files. Before finalizing, run the host repository's required
 checks when practical.
 
+For plugins, include `uv run ruff format --check <paths>` in lint checks and use `uv run ruff format <paths>` to fix
+formatting relevant to the current contribution. Do not run Ruff's formatter on Indico core. If the formatting check
+flags many problems in code unrelated to the current contribution, ignore those unrelated results and avoid broad
+reformatting.
+
 ## Style
 
+- Write all new JavaScript files in TypeScript (`.ts` or `.tsx`), including tests.
+- Mount new React components in Jinja templates through custom HTML elements (e.g. `<ind-my-component>`), registered
+  with `customElements.define`. Pass initial props through element attributes; avoid container divs and inline mounting
+  scripts in templates.
 - Keep imports at the top of the file, grouped by standard library, third-party packages, framework packages, and host
   project packages.
 - Avoid comments that explain what the code plainly does. Reserve comments for non-obvious reasons, invariants,
@@ -107,12 +118,17 @@ checks when practical.
 - Keep changes surgical. Do not reformat, rename, or refactor adjacent code unless required for the task.
 - Wrap user-facing strings for translation: server strings through `_()` (gettext), client strings through `Translate`
   or `Translate.string`. Never ship a bare literal a user will read.
+- Do not translate strings that are not normally shown to users, such as internal identifiers, log messages, and
+  developer-only exceptions.
 
 ## Design Principles
 
 - **Readability first**: clear names, simple control flow, and self-documenting code beat cleverness.
 - **KISS**: write the minimum code that solves the verified problem.
 - **YAGNI**: do not add options, configuration, abstractions, or extension points before they are needed.
+- **Ask before complex workarounds**: if established patterns do not fit and the solution needs substantial custom
+  plumbing or fragile workarounds, pause and explain the limitation and simpler alternatives. Ask which tradeoff to
+  accept before implementing; handle routine implementation choices independently.
 - **DRY**: extract repeated logic when it removes real duplication, but do not create single-use abstractions.
 - **Goal-driven execution**: define the observable behavior before changing implementation.
 
@@ -121,6 +137,7 @@ checks when practical.
 - Follow the host repository's branch policy. If none is documented, do not commit directly on `main` or `master`.
 - Stage files explicitly by name. Never use `git add -A`, `git add .`, or `git add -u`.
 - Use single-line commit messages in English: `type: imperative subject`.
+- Keep commit subjects under 50 characters, including spaces and any type prefix.
 - Keep the subject lowercase after the colon and omit trailing punctuation.
 - Commit style follows the target repository when it differs. The upstream Indico repositories have their own
   conventions; see `indico/AGENTS.md`.
@@ -131,16 +148,16 @@ checks when practical.
 
 ## PR Conventions
 
+- Use [write-indico-pr](skills/write-indico-pr/SKILL.md) when preparing a PR title and description.
 - Write descriptions at the big-picture level: what changed and why it matters.
-- Avoid file-by-file narration, implementation details, version numbers, and CI status in the description.
+- Avoid file-by-file narration and routine CI status. Include technical details or version requirements when they
+  explain the behavior, a compatibility constraint, or how to verify the change.
 - Default to brief. A new feature does not automatically earn headers and sections; add structure only when the reader
   needs it.
 - Bug-fix descriptions state the root cause, not only the symptom. When behavior changes, a short Before/After pair
   makes the change reviewable at a glance.
-- When one PR fixes several independent problems, introduce each with a bold category header followed by its
-  explanation.
-- When a design choice was close, add an `## Alternatives considered` section, and flag known catches yourself ("One
-  catch worth flagging:") instead of waiting for review to find them.
+- When one PR fixes several independent problems, use bullets or headings if they make the explanation easier to scan.
+- Explain meaningful tradeoffs and known limitations directly; add an alternatives section only when it helps review.
 - Cross-link companion PRs (core and plugin, or stacked branches) in both descriptions.
 - Keep the description current: when review changes the scope or approach, update the description in the same push.
 - Changes visible in the UI include a screenshot or short recording.
