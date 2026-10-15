@@ -22,6 +22,10 @@ indico/migrations/
 
 ## Generate
 
+Before creating a revision, check whether the latest migration belongs to the same PR: it was created on the current
+branch or in this conversation. If so, prefer modifying it. Downgrade to its parent revision before editing, then upgrade
+afterward. Scope database commands to the relevant plugin when applicable.
+
 ```sh
 indico db migrate -m "Short imperative summary"
 ```

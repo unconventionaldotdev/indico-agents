@@ -26,9 +26,14 @@ This directory contains the upstream Indico codebase (https://github.com/indico/
 
 ## Patterns
 
+- **Core mechanisms**:
+  - Reuse existing core request handlers and views where appropriate to preserve argument processing, access checks, URL handling, and page layout.
+  - Check Indico's existing session, CSRF, settings, and model discovery mechanisms before adding custom plumbing.
 - **Request handlers (RH)**: subclass `RH` (or `RHProtected`, `RHEventBase`, ...). Implement `_process()` or `_process_GET()`/`_process_POST()`. Use `_check_access()` for permission checks.
+- **Argument parsing**: Indico's parser in `indico/web/args.py` strips leading and trailing whitespace from query-string, form, and JSON string values recursively before schema validation. Helpers such as `use_args`, `use_kwargs`, and their RH variants use this parser. Do not add redundant `.strip()` calls or schema normalization for these parsed values; whitespace-only strings already become empty strings. Raw `request.args`, `request.form`, and `request.get_json()` access bypasses this normalization.
 - **Forms**: WTForms-based, declared in `forms/` per module. Use `IndicoForm` and Indico's custom fields.
 - **Permissions**: ACL helpers under `indico/core/db/sqlalchemy/protection.py`. Decorate RH classes with the appropriate `Protection*` mixins or override `_check_access`.
+  - Distinguish broad management permissions from narrower permissions. Inspect their definitions and access checks before assuming one permission implies another.
 - **i18n**: wrap user-facing strings in `_()` (gettext). Extract translations through Indico's standard tooling.
 - **Signals**: declare in `indico/core/signals/<area>.py`. Plugins consume them through `signal.connect_via(...)`.
 
@@ -51,8 +56,8 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 
 ### Commits And Titles
 
-- Core commits use a capitalized plain imperative subject with no type prefix ("Add changelog entry"). Plugin repos prefix the component in sentence case ("VC/Zoom: Fix auto-checkin with multiple regforms").
-- PR titles become merged commit subjects. Core and contrib squash-merge; `indico-plugins` merges branches unsquashed, so every fixup commit subject must stand on its own.
+- Core and plugin commits use a capitalized plain imperative subject with no type or plugin-name prefix ("Add changelog entry"). Plugin-name or component prefixes belong only in PR titles ("VC/Zoom: Fix auto-checkin with multiple regforms"), never in contributor commit messages.
+- Core and contrib squash-merge, so the PR title becomes the squash commit subject; do not copy its plugin-name prefix into contributor commits. `indico-plugins` merges branches unsquashed, so every fixup commit subject must stand on its own.
 - A commit body is acceptable upstream when the subject cannot carry the rationale.
 
 ### Changelogs
@@ -66,6 +71,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 - A second FK to the same model needs `foreign_keys=` on the existing relationship.
 - Columns get `#:` doc comments.
 - Migration PRs carry the `alembic` label. Expect the revision to be rebased at merge time.
+- Prefer modifying the latest migration if it belongs to the same PR (created on the current branch or in this conversation). Downgrade to its parent revision before editing, then upgrade afterward. Scope database commands to the relevant plugin when applicable.
 
 ### Comments And Docstrings
 
@@ -99,7 +105,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 - Test files use the `*_test.py` suffix.
 - Side-effect-only fixtures are applied with `@pytest.mark.usefixtures`, never as an unused argument.
 - Shared setup becomes a factory fixture, not a module-level helper taking `db` and plugin arguments.
-- Frontend changes ship jest specs in `client/js/**/__tests__/*.spec.js` with `it()` names that read as behavior sentences.
+- Frontend changes ship TypeScript jest specs in `client/js/**/__tests__/*.spec.ts` (or `.spec.tsx`) with `it()` names that read as behavior sentences.
 - New endpoints get an access-matrix test: each relevant role, including managers of unrelated events, asserted against the expected status code.
 
 ### Review Flow
