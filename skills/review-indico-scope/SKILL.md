@@ -250,9 +250,7 @@ Two kinds of rules live here: properties the change must have (checked against t
 
 ### Commit messages and history (check the change)
 
-- Core: capitalized plain imperative, no prefix.
-- Plugin repos: `Component: Sentence case`.
-- `indico-plugins` merges unsquashed, so each subject stands alone.
+- Capitalized plain imperative, no type or plugin-name prefix.
 - Review-stage history is small single-purpose commits, one per review point, pushed as fix-ups; squash only when asked.
 - Contested visual tweaks go in their own commit so before and after can be compared.
 - Debug leftovers in review-stage commits (`console.log`, half-done `TODO fix properly and remove` adapters) are removed by the next push; reviewers delete them silently and judge the cleaned state.

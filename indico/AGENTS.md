@@ -57,7 +57,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 ### Commits
 
 - Core and plugin commits use a capitalized plain imperative subject with no type or plugin-name prefix ("Add changelog entry").
-- Core and contrib squash-merge, so the PR title becomes the squash commit subject; do not copy its plugin-name prefix into contributor commits. `indico-plugins` merges branches unsquashed, so every fixup commit subject must stand on its own.
+- Core and plugin PRs are squash-merged, so the PR title becomes the squash commit subject; do not copy its plugin-name prefix into contributor commits.
 - A commit body is acceptable upstream when the subject cannot carry the rationale.
 
 ### Changelogs
