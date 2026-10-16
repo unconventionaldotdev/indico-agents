@@ -54,9 +54,9 @@ This directory contains the upstream Indico codebase (https://github.com/indico/
 
 Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indico/indico-plugins-contrib`, learned from upstream review. They override the defaults in `CONVENTIONS.md` where they conflict.
 
-### Commits And Titles
+### Commits
 
-- Core and plugin commits use a capitalized plain imperative subject with no type or plugin-name prefix ("Add changelog entry"). Plugin-name or component prefixes belong only in PR titles ("VC/Zoom: Fix auto-checkin with multiple regforms"), never in contributor commit messages.
+- Core and plugin commits use a capitalized plain imperative subject with no type or plugin-name prefix ("Add changelog entry").
 - Core and contrib squash-merge, so the PR title becomes the squash commit subject; do not copy its plugin-name prefix into contributor commits. `indico-plugins` merges branches unsquashed, so every fixup commit subject must stand on its own.
 - A commit body is acceptable upstream when the subject cannot carry the rationale.
 
@@ -71,7 +71,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 - A second FK to the same model needs `foreign_keys=` on the existing relationship.
 - Columns get `#:` doc comments.
 - Migration PRs carry the `alembic` label. Expect the revision to be rebased at merge time.
-- Prefer modifying the latest migration if it belongs to the same PR (created on the current branch or in this conversation). Downgrade to its parent revision before editing, then upgrade afterward. Scope database commands to the relevant plugin when applicable.
+- Use [add-alembic-migration](../skills/add-alembic-migration/SKILL.md) when creating or updating migrations.
 
 ### Comments And Docstrings
 
@@ -105,19 +105,17 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 - Test files use the `*_test.py` suffix.
 - Side-effect-only fixtures are applied with `@pytest.mark.usefixtures`, never as an unused argument.
 - Shared setup becomes a factory fixture, not a module-level helper taking `db` and plugin arguments.
-- Frontend changes ship TypeScript jest specs in `client/js/**/__tests__/*.spec.ts` (or `.spec.tsx`) with `it()` names that read as behavior sentences.
 - New endpoints get an access-matrix test: each relevant role, including managers of unrelated events, asserted against the expected status code.
 
 ### Review Flow
 
+- Use [write-indico-pr](../skills/write-indico-pr/SKILL.md) when preparing a PR title and description.
 - Gauge maintainer appetite before building anything significant: open an issue or ask first.
 - Open as draft; ping the maintainer when ready for review.
 - Maintainers push commits onto contributor branches. Pull before pushing more work.
 - Resolve conflicts by rebasing, also while the PR is under review.
 - When claiming something works, state how it was verified. UI claims come with a screenshot.
-- Cross-link companion core and plugin PRs in both descriptions.
-- Contrib CI picks the core branch to build against from the core PR referenced in the PR body; reference the core PR whenever the change depends on one.
-- Stacked or cross-fork PRs state the target branch in the description. When the base lands, close and reopen the PR against upstream.
+- When the base of a stacked PR lands, close and reopen the PR against upstream.
 - Workflows on upstream repos cannot be rerun without admin rights; recover with a new commit or ask a maintainer.
 
 ## Documentation

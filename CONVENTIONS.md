@@ -149,18 +149,6 @@ reformatting.
 ## PR Conventions
 
 - Use [write-indico-pr](skills/write-indico-pr/SKILL.md) when preparing a PR title and description.
-- Write descriptions at the big-picture level: what changed and why it matters.
-- Avoid file-by-file narration and routine CI status. Include technical details or version requirements when they
-  explain the behavior, a compatibility constraint, or how to verify the change.
-- Default to brief. A new feature does not automatically earn headers and sections; add structure only when the reader
-  needs it.
-- Bug-fix descriptions state the root cause, not only the symptom. When behavior changes, a short Before/After pair
-  makes the change reviewable at a glance.
-- When one PR fixes several independent problems, use bullets or headings if they make the explanation easier to scan.
-- Explain meaningful tradeoffs and known limitations directly; add an alternatives section only when it helps review.
-- Cross-link companion PRs (core and plugin, or stacked branches) in both descriptions.
-- Keep the description current: when review changes the scope or approach, update the description in the same push.
-- Changes visible in the UI include a screenshot or short recording.
 - Reply to review comments like a teammate: state the problem, suggest the fix, and keep the thread focused.
 - Put project-specific test instructions, deployment notes, and reviewer context in the host repository PR, not in this
   shared repository.
