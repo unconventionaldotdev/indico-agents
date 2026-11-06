@@ -80,6 +80,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 
 ### Props and PropTypes
 
+- New components use TypeScript with typed props; apply the PropTypes-specific checks below to existing JavaScript
+  components.
 - Exported components destructure props in the signature; destructure every prop the component reads; `...rest` is only for pass-through.
 - Optional callbacks: define the handler unconditionally and pass `cb ? handler : null`, never `const handler = cb && (() => ...)`.
 - A wrapper that preconfigures a component spreads the inner `propTypes` (`...FinalPersonLinkField.propTypes`, an inner component reusing `Wrapper.propTypes`).
@@ -398,7 +400,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Defer to the next tick with `_.defer(...)`, not `Promise.resolve().then(...)`.
 - No lodash for what the platform provides (`Object.keys`, `Object.values(x).some(...)`), and no reimplementation of what a dependency in use provides (`_.range`, `nanoid`).
 - Nothing loads from a CDN (pdf.js worker, editor assets): ship it through webpack (`CopyWebpackPlugin` into `dist/js`, `workerSrc` pointing there).
-- A heavy module is lazy-loaded behind a wrapper component with a `Loader` (`await import(...)` in `useEffect`), the inner component reusing `Wrapper.propTypes`.
+- A heavy module is lazy-loaded behind a wrapper component with a `Loader` (`await import(...)` in `useEffect`); share
+  the props type between wrapper and inner component in TypeScript, or reuse `Wrapper.propTypes` in legacy JavaScript.
 - Admin-only code goes in its own bundle (`module.json` `partials: {admin: './admin.js'}`, page bundles `module_x.admin.js`) so regular pages do not load it.
 - Empty `index.js` files are deleted.
 - Build-time scripts (`preval`) follow the runtime lint style and skip unexpected input (an unofficial locale directory) with `try/catch` plus `continue` and a comment.
@@ -410,7 +413,8 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Mount custom elements with `CustomElementBase.defineWhenDomReady(...)`.
 - Custom elements that mount React in `connectedCallback` unmount it in `disconnectedCallback`.
 - Custom elements are registered once from `indico/web/client/js/index.js`; components use the tag without importing the element module; siblings in `custom_elements/` import each other relatively.
-- File order in a custom element module: component, its `propTypes` right after it, `customElements.define(...)` last.
+- New custom element modules use TypeScript: declare the props type before the component and register the element last.
+  In legacy JavaScript modules, keep the component's `propTypes` right after it and register the element last.
 - A custom element rendered from JSX reacts to every attribute React may change after mount (`observedAttributes` plus `attributeChangedCallback`).
 - Boolean attributes are written `attr={flag || undefined}` and read with `hasAttribute`; the raw attribute string never reaches a boolean prop.
 - Attributes the component stopped reading are removed from the element and the template.
