@@ -83,7 +83,8 @@ Also check `__tests__/*.test.js` files, and use the Scenarios section for the ma
 - Long symbol lists become module imports (`from ...management import reglists`, then `reglists.RHRegistrationEdit`).
 - Every new validation rule and every non-trivial query (grouped tag matching, subqueries) ships with a test.
 - When a cross-cutting mechanism is rewired (CORS moved from blueprint config to a decorator), its tests are re-run and updated, including the error response path.
-- JS unit tests live in `__tests__/<module>.test.js` next to the module and import it with `../module`.
+- Frontend unit tests live in `__tests__/` next to the module and import it with `../module`. Accept both `.test` and
+  `.spec` suffixes and follow nearby tests when naming new ones.
 - Pure client logic extracted into its own module (a selection state machine, a date parser, `formatDate`) ships with a Jest test.
 - Jest cases use `test.each`: one case per transition table row, per locale format, per accepted and per rejected input.
 - A web component PR without tests for its state machine is incomplete.
