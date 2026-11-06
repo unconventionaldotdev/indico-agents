@@ -21,7 +21,8 @@ the description to the change; do not impose a fixed template.
 
 ## Title
 
-- Keep PR titles to at most 50 characters, including spaces and any component prefix.
+- Aim for PR titles of 50 characters or fewer, including spaces and any component prefix; use a longer title when
+  needed for clarity.
 - For `indico/indico`, default to a capitalized imperative with no Conventional Commit prefix or trailing period:
   `Fix registration filters for single choice fields`.
 - For a change to one official plugin, commonly use its established component prefix followed by an imperative:
