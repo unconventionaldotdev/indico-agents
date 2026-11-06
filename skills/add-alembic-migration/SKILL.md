@@ -24,13 +24,25 @@ indico/migrations/
 
 Before creating a revision, check whether the latest migration belongs to the same PR: it was created on the current
 branch or in this conversation. If so, prefer modifying it. Downgrade to its parent revision before editing, then upgrade
-afterward. Scope database commands to the relevant plugin when applicable.
+afterward.
 
 ```sh
 indico db migrate -m "Short imperative summary"
 ```
 
-This calls Alembic's `revision --autogenerate` against the current model snapshot. Review the generated file carefully; autogeneration misses:
+For a plugin migration, put `--plugin <name>` before the database subcommand:
+
+```sh
+indico db --plugin <name> migrate -m "Short imperative summary"
+# Before editing the latest migration from this PR
+indico db --plugin <name> downgrade -1
+# After editing
+indico db --plugin <name> upgrade head
+```
+
+Use the same plugin scope for every database command in the checks below.
+
+The `migrate` command calls Alembic's `revision --autogenerate` against the current model snapshot. Review the generated file carefully; autogeneration misses:
 
 - Custom types (re-declare them in the migration).
 - Conditional changes (e.g. backfill before constraint).
