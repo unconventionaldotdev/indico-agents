@@ -118,9 +118,11 @@ Two kinds of rules live here: properties the change must have (checked against t
 
 ### What the description states
 
-- Root cause for fixes.
+- For fixes, the affected operation and triggering condition, with the root cause and resulting behavior when known;
+  do not require an invented cause to fill out the description.
 - Use case for features.
-- Before/After for behavior changes.
+- Describe behavior changes in proportion to their scope; use explicit Before/After comparisons when they help a
+  reviewer assess the result, rather than requiring a fixed template.
 - No generic feature bullets that carry no information.
 - A deliberate omission (no checkbox, behavior applied implicitly) is stated with its reason instead of being discovered in review.
 - Known limitations are stated with their mitigation ("a catastrophic regex hangs the parser; the surface is admin-only") instead of being discovered in review.
