@@ -137,7 +137,8 @@ reformatting.
 - Follow the host repository's branch policy. If none is documented, do not commit directly on `main` or `master`.
 - Stage files explicitly by name. Never use `git add -A`, `git add .`, or `git add -u`.
 - Use single-line commit messages in English: `type: imperative subject`.
-- Keep commit subjects under 50 characters, including spaces and any type prefix.
+- Aim for commit subjects of 50 characters or fewer, including spaces and any type prefix; use a longer subject when
+  needed for clarity.
 - Keep the subject lowercase after the colon and omit trailing punctuation.
 - Commit style follows the target repository when it differs. The upstream Indico repositories have their own
   conventions; see `indico/AGENTS.md`.
