@@ -148,7 +148,7 @@ reformatting.
 
 ## PR Conventions
 
-- Use [write-indico-pr](skills/write-indico-pr/SKILL.md) when preparing a PR title and description.
+- Use the `write-indico-pr` skill when preparing a PR title and description.
 - Reply to review comments like a teammate: state the problem, suggest the fix, and keep the thread focused.
 - Put project-specific test instructions, deployment notes, and reviewer context in the host repository PR, not in this
   shared repository.

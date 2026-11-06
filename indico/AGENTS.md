@@ -71,7 +71,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 - A second FK to the same model needs `foreign_keys=` on the existing relationship.
 - Columns get `#:` doc comments.
 - Migration PRs carry the `alembic` label. Expect the revision to be rebased at merge time.
-- Use [add-alembic-migration](../skills/add-alembic-migration/SKILL.md) when creating or updating migrations.
+- Use the `add-alembic-migration` skill when creating or updating migrations.
 
 ### Comments And Docstrings
 
@@ -109,7 +109,7 @@ Conventions for PRs against `indico/indico`, `indico/indico-plugins`, and `indic
 
 ### Review Flow
 
-- Use [write-indico-pr](../skills/write-indico-pr/SKILL.md) when preparing a PR title and description.
+- Use the `write-indico-pr` skill when preparing a PR title and description.
 - Gauge maintainer appetite before building anything significant: open an issue or ask first.
 - Open as draft; ping the maintainer when ready for review.
 - Maintainers push commits onto contributor branches. Pull before pushing more work.
