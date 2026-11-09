@@ -6,7 +6,7 @@ description: Test checklist for reviewing Indico core and plugin changes against
 # review-indico-tests
 
 Check every touched `*_test.py` and `fixtures.py`.
-Also check `__tests__/*.test.js` files, and use the Scenarios section for the manual pass over the changed area.
+Also check files under `__tests__/`, and use the Scenarios section for the manual pass over the changed area.
 
 ## Fixtures
 
