@@ -78,7 +78,7 @@ Write tests that earn their keep:
 ### Client-Side Tests
 
 - Frontend changes ship a Jest test alongside the component, under `client/js/**/__tests__/` or the host repository's
-  equivalent location. Follow nearby tests for the `.test` or `.spec` suffix and use `.ts` or `.tsx` for new files.
+  equivalent location. Follow nearby tests for the `.test` or `.spec` suffix.
 - Name `it()` blocks as behavior sentences ("renders the join button when the meeting is live"), not implementation
   notes.
 

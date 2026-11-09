@@ -134,7 +134,7 @@ Always provide a name. Concurrent index creation requires running outside a tran
 
 Before approving a migration, verify:
 
-1. **Downgrade is symmetric**: every `upgrade()` op has an inverse in `downgrade()`. Test by running `indico db downgrade -1 && indico db upgrade head` on a populated DB.
+1. **Downgrade is symmetric**: every `upgrade()` op has an inverse in `downgrade()`. Verify on a populated DB using the Testing A Migration section below.
 2. **No `NOT NULL` on existing rows without a backfill**: adding `nullable=False` to a column on a non-empty table fails. Pattern:
    - Add column nullable.
    - Backfill via `op.execute("UPDATE ...")` or a Python helper.

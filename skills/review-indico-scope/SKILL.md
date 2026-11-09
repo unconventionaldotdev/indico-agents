@@ -253,8 +253,6 @@ Two kinds of rules live here: properties the change must have (checked against t
 ### PR titles (check the PR)
 
 - Check the title against the `write-indico-pr` skill and target repository conventions.
-- Core and plugin PR titles use a capitalized imperative without a Conventional Commit type prefix; plugin titles
-  may include the established plugin-name prefix.
 
 ### Commit messages and history (check the change)
 
