@@ -466,6 +466,7 @@ Pick the sections that match the file (a controller module gets Request Handlers
 - The payload built from registered handlers is a dict keyed by name (`{x.name: x.regex for x in handlers.values()}`), and the key is always present (empty dict when nothing is registered), never added conditionally.
 - A getter built on `named_objects_from_signal` gets an `@signals.core.app_created.connect` handler (`_check_x_handlers`) that calls it once, so duplicate names raise at startup instead of on the first request.
 - When plugin data moves onto an existing signal, trace every early return between the entry point and the `send()` call; a no-op update path that skips the signal silently drops the plugin data.
+- A custom type plugged into a core registry (a registration field through `get_fields`) is checked against every place core special-cases the built-in it imitates: grep for `isinstance` and type checks on that built-in (`RegistrationFormText` and `TextDataSchema` exempt the Label from the retention checks of "Show if" conditions) and give the new type the same treatment, through a generic attribute upstream when core hardcodes the class.
 - An interceptable hook or signal stub exposed to plugins keeps `**kwargs` so handlers can receive extra context later without a signature change; not an unused parameter.
 
 ## Forms (WTForms)
