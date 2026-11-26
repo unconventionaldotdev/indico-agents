@@ -67,6 +67,7 @@ Orchestrator. The checklists live in the layer skills; read all four before prod
    - Core: `pre-commit run --files <changed files>` (ruff, eslint, prettier, stylelint, headers), `pytest` on every test module whose package was touched (full `pytest` when models, migrations or shared helpers changed), `npm run lint` when JS/SCSS changed, `indico db_diff` when models changed (must print nothing).
    - Plugins: `ruff check` and `ruff format --check` on the plugin, `pytest <plugin dir>`, `npm run lint` when JS changed, the plugin's `tests` workflow when a core version bump is involved.
    - Private hosts: the commands and fixtures listed in the host repository instructions.
+   - Every repository, whatever its CI runs: biome (`npx biome format` with the nearest `biome.jsonc`, core's when the host has none) on the changed `.js`/`.jsx`/`.ts`/`.tsx` files, and `ruff format --check` on the changed `.py` files outside core. Reviewers run both, so a host without a JS lint target is no excuse.
    Fix every failure the review introduced; a pre-existing failure is reported with its output, never silenced.
 8. **Close.** Own work: fixed findings, skipped findings with the reason given, the verification result, and what still needs a manual check (browser, external service). Teammate review: the URL of the posted review, the findings left unposted and why, the top-level remark if there is one, and the manual checks the author should run.
 

@@ -95,10 +95,11 @@ When the host repository does not define commands, use the standard toolchain fo
 For fast feedback, scope direct commands to the changed files. Before finalizing, run the host repository's required
 checks when practical.
 
-For plugins, include `uv run ruff format --check <paths>` in lint checks and use `uv run ruff format <paths>` to fix
-formatting relevant to the current contribution. Do not run Ruff's formatter on Indico core. If the formatting check
-flags many problems in code unrelated to the current contribution, ignore those unrelated results and avoid broad
-reformatting.
+For plugins and host repositories, include `uv run ruff format --check <paths>` in lint checks, even when their CI
+does not run it, and use `uv run ruff format <paths>` to fix formatting relevant to the current contribution. Do not
+run Ruff's formatter on Indico core. Format changed `.js`, `.jsx`, `.ts` and `.tsx` files with biome, using the
+nearest `biome.jsonc` (Indico core's when the host has none). If the formatting check flags many problems in code
+unrelated to the current contribution, ignore those unrelated results and avoid broad reformatting.
 
 ## Style
 
@@ -115,6 +116,10 @@ reformatting.
   multiple listener returns combine.
 - Match the surrounding file's formatting, naming, and abstraction level.
 - Prefer editing existing modules over creating new ones.
+- Before writing a component, editor wrapper or field type, look for the core one that does the job and reuse it; when
+  it lacks an extension point, add a small option upstream instead of copying its internals.
+- A custom type plugged into a core registry gets the treatment core hardcodes for the built-in it imitates; grep core
+  for `isinstance` checks on that built-in before finishing.
 - Keep changes surgical. Do not reformat, rename, or refactor adjacent code unless required for the task.
 - Wrap user-facing strings for translation: server strings through `_()` (gettext), client strings through `Translate`
   or `Translate.string`. Never ship a bare literal a user will read.

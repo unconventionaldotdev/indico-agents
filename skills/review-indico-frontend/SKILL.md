@@ -25,6 +25,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Follow the library's documented composition (one `Accordion` holding every `Accordion.Title`/`Accordion.Content` pair).
 - Explicit over computed when nothing varies (`defaultActiveIndex={[0]}`); when an extension point makes it vary, name the hook.
 - Per-type behavior (`showIfOptions`, `getDataForCondition`) lives in the field registry, not in `if/else` chains on `inputType`.
+- Every registry option a field type sets is read on the render path that type takes; `noLabel` next to `customFormItem` is dead (the custom path never reads it) and is removed.
 - Page-level widget scripts tolerate the widget markup being absent or reduced (a disabled variant on management pages): null-check the root lookup or return early.
 - Values read from the same object are destructured in one statement; a second `const {x} = this.props` right after the main unpacking joins it (`booking, booking: {a, b}` or one separate statement for the parent).
 
@@ -39,6 +40,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - New wrapper props go in the component's `PROP_BLACKLIST` so they never reach the wrapped library component.
 - Generalizing a behavior into a shared component (`FinalDropdown` search) means auditing every usage: option `text` may be missing or not a string; fall back to the default behavior instead of disabling the feature per consumer.
 - Check the library's own option (`deburr`) before writing the logic yourself.
+- A wrapper that rebuilds a core component (a TinyMCE editor repeating the content-CSS lookup, change handling and rollback timing of `TinyMCETextEditor`) uses the core component instead; when core lacks the extension point (extra `style_formats`), add a small option upstream and reuse it, keeping only the host-specific bits (the box formats) in the host.
 - When a library input is swapped for a custom one, every prop the old call received (`disabled`, `required`, `onFocus`, `onBlur`, placeholder) is forwarded or deliberately dropped.
 - Replacing a library component removes its dead props at every consumer (`disabledDate={() => false}`, `initialVisibleMonth`), its constants imports, the CSS targeting its classes (`:global(.DateRangePicker_picker)`) and callbacks only it called.
 - Remove what the change made redundant (a `title` replaces `TooltipIfTruncated`; one combined string replaces two tooltips).
@@ -118,6 +120,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - `FinalDropdown` gets only non-default props (no `hideValidationError`, `multiple={false}`, `search={false}`).
 - A field wrapper passes `FinalField` only the props it needs; forwarding `{...props}` with `description` renders it twice.
 - Wrapped final-form fields pass `onFocus` / `onBlur` to the inner input, and call both on non-input interactions like a trigger click, so `touched` works and errors show on blur.
+- A custom component rendered through `FinalField` forwards `id` (the label's `htmlFor` targets it) and `disabled` (true while the form is `submitting`) to the real input, so the label works and edits lock while the save is in flight; TinyMCE takes both on `<Editor>`.
 - `required` yields a distinct "Please provide the X" message per sub-field; `value` may be `null` under `allowNull`.
 - A `FinalField` whose value is an array or object passes `isEqual` (`unsortedArraysEqual` from `indico/react/forms` for order-free lists, `_.isEqual` otherwise), and the `FinalForm` gets `initialValuesEqual={_.isEqual}`: otherwise dirty tracking and reinitialization misfire.
 - Coupled inputs (pick a field, then a value whose options depend on it) are one custom component driven by final-form state, not two fields with local `useState`.
@@ -134,6 +137,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - Optional text fields never send `''`: `nullIfEmpty` on the field, `onlyIf` in the serializer, `reason || undefined` when the edit payload is built by hand (a nicer validation error than "field cannot be null").
 - The empty value of a field is its canonical empty shape (`{}`), never a sentinel key (`{'': -1}`); for a non-required field the empty value gets submitted.
 - Field values stay light (identifiers only); extra data is resolved server-side, not through callbacks that leak field internals.
+- An input that publishes its value late (core TinyMCE debounces `onChange` by 200 ms, `maxWait` 1 s) flushes it before submit or on `focusout`; a submit right after the last keystroke must send the new value, never the previous one.
 - Client state holds a multi-value field in the shape the API takes (a sorted array of keys, `PropTypes.arrayOf(PropTypes.string)`, payload key `recurrence_weekdays`) so the serializer passes it through; no object-of-booleans converted at the boundary.
 - Optional payload keys are omitted (`selected ? {ids: selected} : {}`), never sent as `[]`.
 - Build request params per branch (`let url, params, body;` then one block per mode), not by accumulating across steps.
@@ -327,6 +331,7 @@ Check the touched `client/`, `templates/` and `.scss` files and run the UI once.
 - A format hint screen readers need stays in the DOM under `%visually-hidden`; a `placeholder` alone is not announced.
 - Sub-labels with an obvious default (`rangeStartLabel`) are optional with translated defaults.
 - Where space is tight the label stays in the DOM visually hidden, never removed; a trailing `:` is not rendered when the label is empty.
+- An editable iframe (TinyMCE) gets a translated accessible name (`iframe_aria_text`); the label of the field alone does not reach inside it.
 
 ### i18n
 

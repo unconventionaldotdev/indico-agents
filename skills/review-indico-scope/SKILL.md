@@ -185,6 +185,7 @@ Two kinds of rules live here: properties the change must have (checked against t
 - A PR shipping a feature plus an internal building block (a design system, a shared stylesheet layer) gets two entries: the feature under Improvements, the building block under Internal Changes.
 - The two blank lines closing a version block stay.
 - After a rebase the changelog diff adds only this PR's entries.
+- After a rebase across a release cut, the entry still sits under the unreleased heading; git moves it under the version just released without a conflict.
 
 ### Versioning
 
